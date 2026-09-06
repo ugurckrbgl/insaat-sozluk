@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Yönetim Paneli — İnşaat Sözlüğü</title>
+<style>
+  :root { --bg:#0f1115; --bg-card:#171a21; --bg-card-hover:#1f232c; --border:#2a2f3a; --accent:#e63946; --accent-2:#f4a300; --text:#eef0f3; --text-dim:#9aa1ad; --positive:#4ade80; --negative:#f87171; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif; background:var(--bg); color:var(--text); min-height:100vh; }
+  .layout { display:flex; min-height:100vh; }
+  .sidebar { width:220px; background:var(--bg-card); border-right:1px solid var(--border); padding:20px 0; flex-shrink:0; }
+  .sidebar h1 { font-size:1.05rem; padding:0 20px 20px; margin:0; border-bottom:1px solid var(--border); margin-bottom:12px; }
+  .sidebar .menu-item { padding:12px 20px; cursor:pointer; color:var(--text-dim); font-size:.92rem; }
+  .sidebar .menu-item:hover { background:var(--bg-card-hover); color:var(--text); }
+  .sidebar .menu-item.active { color:var(--accent); border-right:3px solid var(--accent); background:var(--bg-card-hover); }
+  .content-area { flex:1; padding:28px; overflow-x:auto; }
+  .page-title { font-size:1.4rem; margin:0 0 20px; display:flex; justify-content:space-between; align-items:center; }
+  .btn { border:1px solid var(--border); border-radius:8px; background:var(--bg-card); color:var(--text); padding:8px 16px; cursor:pointer; font:inherit; font-size:.88rem; }
+  .btn:hover { background:var(--bg-card-hover); }
+  .btn-primary { background:var(--accent); color:#fff; border-color:var(--accent); }
+  .btn-danger { background:var(--negative); color:#fff; border-color:var(--negative); }
+  .btn-sm { padding:4px 10px; font-size:.78rem; }
+  table { width:100%; border-collapse:collapse; background:var(--bg-card); border-radius:10px; overflow:hidden; }
+  th, td { text-align:left; padding:10px 14px; border-bottom:1px solid var(--border); font-size:.88rem; }
+  th { color:var(--text-dim); font-weight:600; font-size:.78rem; text-transform:uppercase; }
+  tr:hover { background:var(--bg-card-hover); }
+  .form-box { background:var(--bg-card); border:1px solid var(--border); border-radius:12px; padding:20px; margin-bottom:20px; }
+  .form-box input, .form-box textarea, .form-box select { width:100%; padding:10px 12px; border-radius:8px; border:1px solid var(--border); background:var(--bg); color:var(--text); font:inherit; margin-bottom:12px; }
+  .form-box textarea { min-height:80px; resize:vertical; }
+  .form-box label { display:block; font-size:.82rem; color:var(--text-dim); margin-bottom:4px; margin-top:10px; }
+  .form-row { display:flex; gap:12px; }
+  .form-row > * { flex:1; }
+  .login-screen { display:flex; align-items:center; justify-content:center; height:100vh; }
+  .login-box { background:var(--bg-card); border:1px solid var(--border); border-radius:14px; padding:32px; width:340px; }
+  .error-msg { color:var(--negative); font-size:.85rem; margin-bottom:10px; }
+  .badge { display:inline-block; padding:2px 10px; border-radius:999px; font-size:.75rem; }
+  .badge-admin { background:rgba(230,57,70,.15); color:var(--accent); }
+  .badge-user { background:rgba(154,161,173,.15); color:var(--text-dim); }
+  .badge-pending { background:rgba(244,163,0,.15); color:var(--accent-2); }
+  .badge-active { background:rgba(74,222,128,.15); color:var(--positive); }
+  .badge-suspended { background:rgba(248,113,113,.15); color:var(--negative); }
+  .img-thumb { width:60px; height:34px; object-fit:cover; border-radius:4px; border:1px solid var(--border); }
+  .img-upload-zone { border:2px dashed var(--border); border-radius:10px; padding:20px; text-align:center; cursor:pointer; margin-bottom:12px; }
+  .img-upload-zone:hover { border-color:var(--accent-2); }
+  .breadcrumb-tree { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:16px; font-size:.85rem; }
+  .breadcrumb-tree span { cursor:pointer; color:var(--accent-2); }
+  .tree-list { display:flex; flex-direction:column; gap:6px; }
+  .tree-item { padding:8px 12px; background:var(--bg-card); border:1px solid var(--border); border-radius:8px; cursor:pointer; display:flex; justify-content:space-between; align-items:center; }
+  .tree-item:hover { background:var(--bg-card-hover); }
+  .empty-note { color:var(--text-dim); padding:30px; text-align:center; }
+  .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,.6); display:flex; align-items:center; justify-content:center; z-index:100; }
+  .modal { background:var(--bg-card); border:1px solid var(--border); border-radius:14px; padding:28px; max-width:600px; width:90%; max-height:85vh; overflow-y:auto; }
+</style>
+</head>
+<body>
+
+<div id="app"></div>
+
+<script>
+const API = "https://insaat-sozluk-api.ugurckrbgl.workers.dev";
+let authToken = localStorage.getItem('sozluk_token') || null;
+let currentUser = JSON.parse(localStorage.getItem('sozluk_user') || 'null');
+let DATA = null;
+let adminView = 'terimler';
+let treeState = { bolumKod: null, anaKatKod: null, katKod: null };
+
+async function api(path, opts = {}) {
+  const headers = opts.headers || {};
+  if (authToken) headers['Authorization'] = 'Bearer ' + authToken;
+  if (opts.body && !(opts.body instanceof FormData)) headers['Content-Type'] = 'application/json';
+  const res = await fetch(API + path, { ...opts, headers });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || 'Bir hata oluştu');
+  return data;
+}
+function esc(s) { const d = document.createElement('div'); d.textContent = s ?? ''; return d.innerHTML; }
+
+async function boot() {
+  if (!authToken || !currentUser) { renderLogin(); return; }
+  try {
+    const me = await api('/api/auth/me');
+    if (me.user.role !== 'admin') {
+      document.getElementById('app').innerHTML = '<div class="login-screen"><div class="login-box"><h3>Erişim Reddedildi</h3><p style="color:var(--text-dim);">Bu panele sadece yöneticiler erişebilir.</p><a href="/" style="color:var(--accent-2);">Ana sayfaya dön</a></div></div>';
+      return;
+    }
+    currentUser = me.user;
+    DATA = await api('/api/sozluk');
+    renderApp();
+  } catch (e) {
+    renderLogin(e.message);
+  }
+}
+
+function renderLogin(errMsg) {
+  document.getElementById('app').innerHTML = `
+    <div class="login-screen"><div class="login-box">
+      <h2 style="margin-top:0;">🔐 Yönetim Paneli</h2>
+      ${errMsg ? `<div class="error-msg">${esc(errMsg)}</div>` : ''}
+      <input id="loginEmail" type="email" placeholder="E-posta" style="width:100%;padding:10px;margin-bottom:10px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);">
+      <input id="loginPass" type="password" placeholder="Şifre" style="width:100%;padding:10px;margin-bottom:14px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);">
+      <button class="btn btn-primary" style="width:100%;" onclick="doLogin()">Giriş Yap</button>
+    </div></div>`;
+}
+
+async function doLogin() {
+  const email = document.getElementById('loginEmail').value.trim();
+  const password = document.getElementById('loginPass').value;
+  try {
+    const data = await api('/api/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) });
+    authToken = data.token; currentUser = data.user;
+    localStorage.setItem('sozluk_token', authToken);
+    localStorage.setItem('sozluk_user', JSON.stringify(currentUser));
+    boot();
+  } catch (e) { renderLogin(e.message); }
+}
+
+function logout() {
+  localStorage.removeItem('sozluk_token'); localStorage.removeItem('sozluk_user');
+  authToken = null; currentUser = null; renderLogin();
+}
+
+function renderApp() {
+  document.getElementById('app').innerHTML = `
+    <div class="layout">
+      <div class="sidebar">
+        <h1>🏗️ Yönetim Paneli</h1>
+        <div class="menu-item ${adminView==='terimler'?'active':''}" onclick="setView('terimler')">📖 Sözlük İçeriği</div>
+        <div class="menu-item ${adminView==='forum'?'active':''}" onclick="setView('forum')">💬 Forum Moderasyon</div>
+        <div class="menu-item ${adminView==='kullanicilar'?'active':''}" onclick="setView('kullanicilar')">👥 Kullanıcılar</div>
+        <div class="menu-item" onclick="window.location.href='/'">🌐 Siteye Dön</div>
+        <div class="menu-item" onclick="logout()">🚪 Çıkış (${esc(currentUser.display_name)})</div>
+      </div>
+      <div class="content-area" id="contentArea"></div>
+    </div>
+  `;
+  renderView();
+}
+
+function setView(v) { adminView = v; treeState = { bolumKod: null, anaKatKod: null, katKod: null }; renderView(); }
+
+async function renderView() {
+  const area = document.getElementById('contentArea');
+  if (adminView === 'terimler') renderTerimlerView(area);
+  else if (adminView === 'forum') await renderForumModView(area);
+  else if (adminView === 'kullanicilar') await renderKullanicilarView(area);
+}
+
+// ================= SÖZLÜK İÇERİK YÖNETİMİ =================
+function findBolum(kod) { return DATA.bolumler.find(b => b.kod === kod); }
+function getAllKats(b) { return b.kategoriler || (b.anaKategoriler||[]).flatMap(ak=>ak.kategoriler); }
+
+function renderTerimlerView(area) {
+  let html = `<div class="page-title">Sözlük İçeriği</div>`;
+  const crumbs = [`<span onclick="treeState={bolumKod:null,anaKatKod:null,katKod:null};renderView()">Bölümler</span>`];
+
+  if (!treeState.bolumKod) {
+    html += `<div class="tree-list">` + DATA.bolumler.map(b => {
+      const kats = getAllKats(b);
+      const n = kats.reduce((s,k)=>s+k.terimler.length,0);
+      return `<div class="tree-item" onclick="treeState.bolumKod='${b.kod}';renderView()"><span>${esc(b.baslik)}</span><span style="color:var(--text-dim);font-size:.8rem;">${n} terim</span></div>`;
+    }).join('') + `</div>`;
+    area.innerHTML = html;
+    return;
+  }
+
+  const b = findBolum(treeState.bolumKod);
+  crumbs.push(`<span onclick="treeState.anaKatKod=null;treeState.katKod=null;renderView()">${esc(b.baslik)}</span>`);
+
+  if (b.anaKategoriler && !treeState.anaKatKod) {
+    html += `<div class="breadcrumb-tree">${crumbs.join('<span>›</span>')}</div>`;
+    html += `<div class="tree-list">` + b.anaKategoriler.map(ak => {
+      const n = ak.kategoriler.reduce((s,k)=>s+k.terimler.length,0);
+      return `<div class="tree-item" onclick="treeState.anaKatKod='${ak.kod}';renderView()"><span>${esc(ak.baslik)}</span><span style="color:var(--text-dim);font-size:.8rem;">${n} terim</span></div>`;
+    }).join('') + `</div>`;
+    area.innerHTML = html;
+    return;
+  }
+
+  let kats = b.kategoriler;
+  if (b.anaKategoriler) {
+    const ak = b.anaKategoriler.find(x => x.kod === treeState.anaKatKod);
+    crumbs.push(`<span onclick="treeState.katKod=null;renderView()">${esc(ak.baslik)}</span>`);
+    kats = ak.kategoriler;
+  }
+
+  if (!treeState.katKod) {
+    html += `<div class="breadcrumb-tree">${crumbs.join('<span>›</span>')}</div>`;
+    html += `<div style="margin-bottom:12px;"><button class="btn btn-primary btn-sm" onclick="showKategoriEkleModal('${b.kod}','${treeState.anaKatKod||''}')">+ Yeni Kategori</button></div>`;
+    html += `<div class="tree-list">` + kats.map(k => `
+      <div class="tree-item" onclick="treeState.katKod='${k.kod}';renderView()">
+        <span>${esc(k.kod)} — ${esc(k.baslik)}</span>
+        <span style="color:var(--text-dim);font-size:.8rem;">${k.terimler.length} terim</span>
+      </div>`).join('') + `</div>`;
+    area.innerHTML = html;
+    return;
+  }
+
+  const k = kats.find(x => x.kod === treeState.katKod);
+  crumbs.push(`<span>${esc(k.baslik)}</span>`);
+  html += `<div class="breadcrumb-tree">${crumbs.join('<span>›</span>')}</div>`;
+  html += `<div style="margin-bottom:12px;"><button class="btn btn-primary btn-sm" onclick="showTerimEditModal(null, ${k.id})">+ Yeni Terim Ekle</button></div>`;
+  html += `<table><thead><tr><th>Görsel</th><th>Terim</th><th>Anlam</th><th></th></tr></thead><tbody>`;
+  html += k.terimler.map(t => `
+    <tr>
+      <td>${t.gorsel ? `<img class="img-thumb" src="${API}/${t.gorsel}">` : '—'}</td>
+      <td>${esc(t.terim)}</td>
+      <td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(t.anlam)}</td>
+      <td>
+        <button class="btn btn-sm" onclick="showTerimEditModal(${t.id}, ${k.id})">Düzenle</button>
+        <button class="btn btn-sm btn-danger" onclick="deleteTerim(${t.id})">Sil</button>
+      </td>
+    </tr>`).join('');
+  html += `</tbody></table>`;
+  area.innerHTML = html;
+}
+
+function findTerimById(id) {
+  for (const b of DATA.bolumler) {
+    const kats = getAllKats(b);
+    for (const k of kats) {
+      const t = k.terimler.find(t => t.id === id);
+      if (t) return t;
+    }
+  }
+  return null;
+}
+
+function showTerimEditModal(terimId, kategoriId) {
+  const t = terimId ? findTerimById(terimId) : { terim:'', anlam:'', gorsel:'', detay:{} };
+  const d = t.detay || {};
+  document.body.insertAdjacentHTML('beforeend', `
+    <div class="modal-overlay" id="terimModal" onclick="if(event.target===this) this.remove()">
+      <div class="modal">
+        <h3>${terimId ? 'Terimi Düzenle' : 'Yeni Terim'}</h3>
+        <label>Terim Adı</label>
+        <input id="mTerim" value="${esc(t.terim)}">
+        <label>Kısa Anlam</label>
+        <input id="mAnlam" value="${esc(t.anlam)}">
+        <label>Görsel</label>
+        <div id="mGorselPreview">${t.gorsel ? `<img class="img-thumb" style="width:120px;height:68px;" src="${API}/${t.gorsel}">` : '<span style="color:var(--text-dim);">Görsel yok</span>'}</div>
+        <div class="img-upload-zone" onclick="document.getElementById('mGorselInput').click()">📷 Görsel yüklemek için tıklayın (webp/jpg/png)</div>
+        <input type="file" id="mGorselInput" accept="image/*" style="display:none;" onchange="handleGorselUpload(this, '${kategoriId}')">
+        <input type="hidden" id="mGorselUrl" value="${esc(t.gorsel||'')}">
+        <label>Giriş Metni (detaylı açıklama)</label>
+        <textarea id="mGiris">${esc(d.giris||'')}</textarea>
+        <label>Video URL (opsiyonel)</label>
+        <input id="mVideoUrl" value="${esc(d.video_url||'')}">
+        <label>Video Başlığı (opsiyonel)</label>
+        <input id="mVideoBaslik" value="${esc(d.video_baslik||'')}">
+        <div style="display:flex; gap:10px; margin-top:16px;">
+          <button class="btn btn-primary" onclick="saveTerim(${terimId || 'null'}, ${kategoriId})">Kaydet</button>
+          <button class="btn" onclick="document.getElementById('terimModal').remove()">İptal</button>
+        </div>
+      </div>
+    </div>`);
+}
+
+async function handleGorselUpload(input, kategoriId) {
+  const file = input.files[0];
+  if (!file) return;
+  const bolum = treeState.bolumKod || 'A';
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('bolum', bolum);
+  try {
+    document.getElementById('mGorselPreview').innerHTML = 'Yükleniyor...';
+    const data = await api('/api/admin/gorsel-yukle', { method: 'POST', body: formData });
+    document.getElementById('mGorselUrl').value = data.url;
+    document.getElementById('mGorselPreview').innerHTML = `<img class="img-thumb" style="width:120px;height:68px;" src="${API}/${data.url}">`;
+  } catch (e) {
+    alert('Görsel yükleme hatası: ' + e.message);
+  }
+}
+
+async function saveTerim(terimId, kategoriId) {
+  const body = {
+    kategori_id: kategoriId,
+    terim: document.getElementById('mTerim').value.trim(),
+    anlam: document.getElementById('mAnlam').value.trim(),
+    gorsel_url: document.getElementById('mGorselUrl').value.trim(),
+    detay: {
+      giris: document.getElementById('mGiris').value.trim(),
+      video_url: document.getElementById('mVideoUrl').value.trim(),
+      video_baslik: document.getElementById('mVideoBaslik').value.trim(),
+    }
+  };
+  if (!body.terim) { alert('Terim adı zorunludur.'); return; }
+  try {
+    if (terimId) {
+      await api(`/api/admin/terimler/${terimId}`, { method: 'PUT', body: JSON.stringify(body) });
+    } else {
+      await api('/api/admin/terimler', { method: 'POST', body: JSON.stringify(body) });
+    }
+    document.getElementById('terimModal').remove();
+    DATA = await api('/api/sozluk');
+    renderView();
+  } catch (e) { alert('Hata: ' + e.message); }
+}
+
+async function deleteTerim(id) {
+  if (!confirm('Bu terimi silmek istediğinize emin misiniz?')) return;
+  try {
+    await api(`/api/admin/terimler/${id}`, { method: 'DELETE' });
+    DATA = await api('/api/sozluk');
+    renderView();
+  } catch (e) { alert('Hata: ' + e.message); }
+}
+
+function showKategoriEkleModal(bolumKod, anaKatKod) {
+  const b = findBolum(bolumKod);
+  document.body.insertAdjacentHTML('beforeend', `
+    <div class="modal-overlay" id="katModal" onclick="if(event.target===this) this.remove()">
+      <div class="modal">
+        <h3>Yeni Kategori</h3>
+        <label>Kod (örn: A15, B32)</label>
+        <input id="mKatKod">
+        <label>Başlık</label>
+        <input id="mKatBaslik">
+        <div style="display:flex; gap:10px; margin-top:16px;">
+          <button class="btn btn-primary" onclick="saveKategori(${b.id}, ${anaKatKod ? "'"+anaKatKod+"'" : 'null'})">Kaydet</button>
+          <button class="btn" onclick="document.getElementById('katModal').remove()">İptal</button>
+        </div>
+      </div>
+    </div>`);
+}
+
+async function saveKategori(bolumId, anaKatKod) {
+  const kod = document.getElementById('mKatKod').value.trim();
+  const baslik = document.getElementById('mKatBaslik').value.trim();
+  if (!kod || !baslik) { alert('Kod ve başlık zorunludur.'); return; }
+  let ana_kategori_id = null;
+  if (anaKatKod) {
+    const b = DATA.bolumler.find(x => x.id === bolumId);
+    const ak = b.anaKategoriler.find(x => x.kod === anaKatKod);
+    ana_kategori_id = ak.id;
+  }
+  try {
+    await api('/api/admin/kategoriler', { method: 'POST', body: JSON.stringify({ bolum_id: bolumId, ana_kategori_id, kod, baslik }) });
+    document.getElementById('katModal').remove();
+    DATA = await api('/api/sozluk');
+    renderView();
+  } catch (e) { alert('Hata: ' + e.message); }
+}
+
+// ================= FORUM MODERASYON =================
+async function renderForumModView(area) {
+  area.innerHTML = `<div class="page-title">Forum Moderasyon</div><div class="empty-note">Yükleniyor...</div>`;
+  try {
+    const data = await api('/api/admin/forum/bekleyen');
+    let html = `<div class="page-title">Forum Moderasyon</div>`;
+    html += `<h3>Onay Bekleyen Konular (${data.konular.length})</h3>`;
+    if (!data.konular.length) html += `<div class="empty-note">Onay bekleyen konu yok.</div>`;
+    else {
+      html += `<table><thead><tr><th>Başlık</th><th>Yazan</th><th>Kategori</th><th></th></tr></thead><tbody>`;
+      html += data.konular.map(k => `
+        <tr>
+          <td>${esc(k.baslik)}<br><span style="color:var(--text-dim);font-size:.78rem;">${esc(k.icerik.slice(0,100))}...</span></td>
+          <td>${esc(k.display_name)}</td>
+          <td>${esc(k.kategori)}</td>
+          <td>
+            <button class="btn btn-sm btn-primary" onclick="modKonu(${k.id},'yayinda')">Onayla</button>
+            <button class="btn btn-sm btn-danger" onclick="modKonu(${k.id},'reddedildi')">Reddet</button>
+          </td>
+        </tr>`).join('');
+      html += `</tbody></table>`;
+    }
+    html += `<h3 style="margin-top:30px;">Onay Bekleyen Yorumlar (${data.yorumlar.length})</h3>`;
+    if (!data.yorumlar.length) html += `<div class="empty-note">Onay bekleyen yorum yok.</div>`;
+    else {
+      html += `<table><thead><tr><th>Konu</th><th>Yorum</th><th>Yazan</th><th></th></tr></thead><tbody>`;
+      html += data.yorumlar.map(y => `
+        <tr>
+          <td>${esc(y.konu_baslik)}</td>
+          <td>${esc(y.icerik.slice(0,100))}</td>
+          <td>${esc(y.display_name)}</td>
+          <td>
+            <button class="btn btn-sm btn-primary" onclick="modYorum(${y.id},'yayinda')">Onayla</button>
+            <button class="btn btn-sm btn-danger" onclick="modYorum(${y.id},'reddedildi')">Reddet</button>
+          </td>
+        </tr>`).join('');
+      html += `</tbody></table>`;
+    }
+    area.innerHTML = html;
+  } catch (e) {
+    area.innerHTML = `<div class="empty-note">Hata: ${esc(e.message)}</div>`;
+  }
+}
+
+async function modKonu(id, status) {
+  try { await api(`/api/admin/forum/konular/${id}`, { method: 'PUT', body: JSON.stringify({ status }) }); renderView(); }
+  catch (e) { alert('Hata: ' + e.message); }
+}
+async function modYorum(id, status) {
+  try { await api(`/api/admin/forum/yorumlar/${id}`, { method: 'PUT', body: JSON.stringify({ status }) }); renderView(); }
+  catch (e) { alert('Hata: ' + e.message); }
+}
+
+// ================= KULLANICI YÖNETİMİ =================
+async function renderKullanicilarView(area) {
+  area.innerHTML = `<div class="page-title">Kullanıcılar</div><div class="empty-note">Yükleniyor...</div>`;
+  try {
+    const data = await api('/api/admin/kullanicilar');
+    let html = `<div class="page-title">Kullanıcılar (${data.kullanicilar.length})</div>`;
+    html += `<table><thead><tr><th>Ad</th><th>E-posta</th><th>Uzmanlık</th><th>Rol</th><th>Durum</th><th></th></tr></thead><tbody>`;
+    html += data.kullanicilar.map(u => `
+      <tr>
+        <td>${esc(u.display_name)}</td>
+        <td>${esc(u.email)}</td>
+        <td>${esc(u.uzmanlik_alani||'—')}</td>
+        <td><span class="badge ${u.role==='admin'?'badge-admin':'badge-user'}">${u.role}</span></td>
+        <td><span class="badge ${u.status==='active'?'badge-active':'badge-suspended'}">${u.status}</span></td>
+        <td>
+          ${u.role === 'user'
+            ? `<button class="btn btn-sm" onclick="setRole(${u.id},'admin')">Admin Yap</button>`
+            : (u.id !== currentUser.id ? `<button class="btn btn-sm" onclick="setRole(${u.id},'user')">Admin Yetkisini Al</button>` : '')}
+          ${u.status === 'active'
+            ? `<button class="btn btn-sm btn-danger" onclick="setStatus(${u.id},'suspended')">Askıya Al</button>`
+            : `<button class="btn btn-sm" onclick="setStatus(${u.id},'active')">Aktifleştir</button>`}
+        </td>
+      </tr>`).join('');
+    html += `</tbody></table>`;
+    area.innerHTML = html;
+  } catch (e) {
+    area.innerHTML = `<div class="empty-note">Hata: ${esc(e.message)}</div>`;
+  }
+}
+
+async function setRole(id, role) {
+  try { await api(`/api/admin/kullanicilar/${id}`, { method: 'PUT', body: JSON.stringify({ role }) }); renderView(); }
+  catch (e) { alert('Hata: ' + e.message); }
+}
+async function setStatus(id, status) {
+  try { await api(`/api/admin/kullanicilar/${id}`, { method: 'PUT', body: JSON.stringify({ status }) }); renderView(); }
+  catch (e) { alert('Hata: ' + e.message); }
+}
+
+boot();
+</script>
+</body>
+</html>
