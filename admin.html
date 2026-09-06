@@ -50,7 +50,15 @@
   .tree-item:hover { background:var(--bg-card-hover); }
   .empty-note { color:var(--text-dim); padding:30px; text-align:center; }
   .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,.6); display:flex; align-items:center; justify-content:center; z-index:100; }
-  .modal { background:var(--bg-card); border:1px solid var(--border); border-radius:14px; padding:28px; max-width:600px; width:90%; max-height:85vh; overflow-y:auto; }
+  .modal { background:var(--bg-card); border:1px solid var(--border); border-radius:14px; padding:28px; max-width:680px; width:92%; max-height:88vh; overflow-y:auto; }
+  .modal label { display:block; font-size:.82rem; color:var(--text-dim); margin-bottom:5px; margin-top:14px; font-weight:600; }
+  .modal input, .modal textarea, .modal select { width:100%; padding:11px 13px; border-radius:8px; border:1px solid var(--border); background:var(--bg); color:var(--text); font:inherit; font-size:.92rem; box-sizing:border-box; }
+  .modal textarea { resize:vertical; line-height:1.55; }
+  .modal textarea#mGiris { min-height:220px; }
+  .modal textarea#mOzellikler, .modal textarea#mKullanim, .modal textarea#mAvantajlar, .modal textarea#mDezavantajlar { min-height:120px; font-size:.85rem; }
+  .modal .yardim-metni { font-size:.76rem; color:var(--text-dim); margin-top:3px; }
+  .modal .form-row { display:flex; gap:14px; }
+  .modal .form-row > * { flex:1; min-width:0; }
 </style>
 </head>
 <body>
@@ -244,16 +252,49 @@ function showTerimEditModal(terimId, kategoriId) {
         <input type="hidden" id="mGorselUrl" value="${esc(t.gorsel||'')}">
         <label>Giriş Metni (detaylı açıklama)</label>
         <textarea id="mGiris">${esc(d.giris||'')}</textarea>
-        <label>Video URL (opsiyonel)</label>
-        <input id="mVideoUrl" value="${esc(d.video_url||'')}">
-        <label>Video Başlığı (opsiyonel)</label>
-        <input id="mVideoBaslik" value="${esc(d.video_baslik||'')}">
-        <div style="display:flex; gap:10px; margin-top:16px;">
+        <div class="form-row">
+          <div>
+            <label>Video URL (opsiyonel)</label>
+            <input id="mVideoUrl" value="${esc(d.video_url||'')}">
+          </div>
+          <div>
+            <label>Video Başlığı (opsiyonel)</label>
+            <input id="mVideoBaslik" value="${esc(d.video_baslik||'')}">
+          </div>
+        </div>
+        <label>Temel Özellikler <span class="yardim-metni">(her satıra bir madde: Başlık | Açıklama)</span></label>
+        <textarea id="mOzellikler">${esc(listToLines(d.ozellikler))}</textarea>
+        <label>Kullanım Alanları <span class="yardim-metni">(her satıra bir madde: Başlık | Açıklama)</span></label>
+        <textarea id="mKullanim">${esc(listToLines(d.kullanim))}</textarea>
+        <div class="form-row">
+          <div>
+            <label>Avantajlar <span class="yardim-metni">(Başlık | Açıklama)</span></label>
+            <textarea id="mAvantajlar">${esc(listToLines(d.avantajlar))}</textarea>
+          </div>
+          <div>
+            <label>Dezavantajlar <span class="yardim-metni">(Başlık | Açıklama)</span></label>
+            <textarea id="mDezavantajlar">${esc(listToLines(d.dezavantajlar))}</textarea>
+          </div>
+        </div>
+        <div style="display:flex; gap:10px; margin-top:20px;">
           <button class="btn btn-primary" onclick="saveTerim(${terimId || 'null'}, ${kategoriId})">Kaydet</button>
           <button class="btn" onclick="document.getElementById('terimModal').remove()">İptal</button>
         </div>
       </div>
     </div>`);
+}
+
+// "Başlık | Açıklama" satır formatı ile liste <-> metin dönüşümü
+function listToLines(items) {
+  if (!items || !items.length) return '';
+  return items.map(it => `${it.baslik || ''} | ${it.aciklama || ''}`).join('\n');
+}
+function linesToList(text) {
+  return text.split('\n').map(l => l.trim()).filter(Boolean).map(line => {
+    const idx = line.indexOf('|');
+    if (idx === -1) return { baslik: line.trim(), aciklama: '' };
+    return { baslik: line.slice(0, idx).trim(), aciklama: line.slice(idx + 1).trim() };
+  });
 }
 
 async function handleGorselUpload(input, kategoriId) {
@@ -283,6 +324,10 @@ async function saveTerim(terimId, kategoriId) {
       giris: document.getElementById('mGiris').value.trim(),
       video_url: document.getElementById('mVideoUrl').value.trim(),
       video_baslik: document.getElementById('mVideoBaslik').value.trim(),
+      ozellikler: linesToList(document.getElementById('mOzellikler').value),
+      kullanim: linesToList(document.getElementById('mKullanim').value),
+      avantajlar: linesToList(document.getElementById('mAvantajlar').value),
+      dezavantajlar: linesToList(document.getElementById('mDezavantajlar').value),
     }
   };
   if (!body.terim) { alert('Terim adı zorunludur.'); return; }
