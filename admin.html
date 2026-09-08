@@ -60,6 +60,28 @@
   .modal .yardim-metni { font-size:.76rem; color:var(--text-dim); margin-top:3px; }
   .modal .form-row { display:flex; gap:14px; }
   .modal .form-row > * { flex:1; min-width:0; }
+
+
+  @media (max-width: 760px) {
+    .layout { display:block; }
+    .sidebar {
+      width:100%; min-height:auto; padding:8px; border-right:0; border-bottom:1px solid var(--border);
+      display:flex; align-items:center; gap:4px; overflow-x:auto; position:sticky; top:0; z-index:50;
+    }
+    .sidebar h1 { border:0; margin:0 8px 0 0; padding:8px; white-space:nowrap; font-size:.9rem; }
+    .sidebar .menu-item { padding:9px 11px; white-space:nowrap; border-radius:7px; flex-shrink:0; font-size:.82rem; }
+    .sidebar .menu-item.active { border-right:0; border-bottom:2px solid var(--accent); }
+    .content-area { padding:16px 12px 40px; overflow-x:auto; }
+    .page-title { font-size:1.15rem; gap:10px; flex-wrap:wrap; }
+    table { min-width:720px; }
+    th, td { padding:9px 10px; }
+    .tree-item { flex-wrap:wrap; gap:8px; }
+    .tree-item > span:first-child { min-width:180px; }
+    .form-row, .modal .form-row { flex-direction:column; gap:0; }
+    .modal-overlay { align-items:flex-start; padding:12px 0; }
+    .modal { width:95%; padding:20px 16px; max-height:94vh; }
+    .login-box { width:calc(100% - 24px); padding:24px 18px; }
+  }
 </style>
 </head>
 <body>
