@@ -193,7 +193,7 @@ function terimSearchText(t) {
 function renderNav() {
   navBar.innerHTML = `
     <button class="nav-link ${state.view==='home'||state.view==='bolum'||state.view==='kategori'||state.view==='terim'?'active':''}" onclick="goHome()">Sözlük</button>
-    <button class="nav-link ${state.view.startsWith('forum')?'active':''}" onclick="goForum()">Forum</button>
+    <button class="nav-link ${state.view.startsWith('forum') && state.view!=='forum-benim'?'active':''}" onclick="goForum()">Forum</button>
     ${currentUser ? `
       <button class="nav-link ${state.view==='forum-benim'?'active':''}" onclick="goBenimIceriklerim()">İçeriklerim</button>
       <span style="color:var(--text-dim); font-size:.85rem;">👤 ${esc(currentUser.display_name)}</span>
