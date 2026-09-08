@@ -202,6 +202,7 @@ function renderNav() {
     ${currentUser ? `
       <button class="nav-link ${state.view==='forum-benim'?'active':''}" onclick="goBenimIceriklerim()">İçeriklerim</button>
       <span style="color:var(--text-dim); font-size:.85rem;">👤 ${esc(currentUser.display_name)}</span>
+      <button class="btn" onclick="showHesabimModal()">Hesabım</button>
       ${currentUser.role === 'admin' ? '<a href="admin.html" class="btn">Yönetim Paneli</a>' : ''}
       <button class="btn" onclick="logout()">Çıkış</button>
     ` : `
@@ -753,6 +754,71 @@ async function logout() {
   authToken = null; currentUser = null;
   localStorage.removeItem('sozluk_token'); localStorage.removeItem('sozluk_user');
   goHome();
+}
+
+// ---------------- HESABIM (ŞİFRE + OTURUM YÖNETİMİ) ----------------
+function showHesabimModal() {
+  document.getElementById('modalRoot').innerHTML = `
+    <div class="modal-overlay" onclick="if(event.target===this) closeModal()">
+      <div class="modal" style="max-width:440px;">
+        <span class="modal-close" onclick="closeModal()">✕</span>
+        <h3>Hesabım</h3>
+        <div class="error-msg" id="sifreErr" style="display:none;"></div>
+        <label>Mevcut Şifre</label>
+        <input type="password" id="sEski">
+        <label>Yeni Şifre (en az 6 karakter)</label>
+        <input type="password" id="sYeni1">
+        <label>Yeni Şifre (tekrar)</label>
+        <input type="password" id="sYeni2">
+        <button class="btn btn-primary" style="width:100%;" onclick="doSifreDegistir()">Şifreyi Değiştir</button>
+        <hr style="border-color:var(--border); margin:20px 0;">
+        <h3 style="margin-top:0;">📱 Aktif Oturumlarım</h3>
+        <div id="oturumListesi" style="color:var(--text-dim); font-size:.85rem;">Yükleniyor...</div>
+        <button class="btn btn-danger" style="width:100%; margin-top:12px;" onclick="kapatDigerCihazlar()">Diğer Tüm Cihazlardan Çıkış Yap</button>
+      </div>
+    </div>`;
+  yukleOturumlar();
+}
+
+async function doSifreDegistir() {
+  const eski = document.getElementById('sEski').value;
+  const yeni1 = document.getElementById('sYeni1').value;
+  const yeni2 = document.getElementById('sYeni2').value;
+  const errEl = document.getElementById('sifreErr');
+  errEl.style.display = 'none';
+  if (!eski || !yeni1 || !yeni2) { errEl.textContent = 'Tüm alanları doldurun.'; errEl.style.display = 'block'; return; }
+  if (yeni1 !== yeni2) { errEl.textContent = 'Yeni şifreler eşleşmiyor.'; errEl.style.display = 'block'; return; }
+  try {
+    const result = await api('/api/auth/sifre-degistir', { method: 'POST', body: JSON.stringify({ eski_sifre: eski, yeni_sifre: yeni1 }) });
+    alert(result.message || 'Şifreniz başarıyla değiştirildi.');
+    closeModal();
+  } catch (e) { errEl.textContent = e.message; errEl.style.display = 'block'; }
+}
+
+async function yukleOturumlar() {
+  try {
+    const data = await api('/api/auth/oturumlar');
+    const el = document.getElementById('oturumListesi');
+    if (!el) return;
+    if (!data.oturumlar.length) { el.textContent = 'Aktif oturum bulunamadı.'; return; }
+    el.innerHTML = data.oturumlar.map(o => `
+      <div style="padding:8px 0; border-bottom:1px solid var(--border);">
+        ${o.bu_cihaz ? '🟢 Bu cihaz' : '⚪ Başka cihaz'} · ...${esc(o.kimlik)}
+        <div style="font-size:.75rem;">${new Date(o.created_at).toLocaleString('tr-TR')}</div>
+      </div>`).join('');
+  } catch (e) {
+    const el = document.getElementById('oturumListesi');
+    if (el) el.textContent = 'Hata: ' + e.message;
+  }
+}
+
+async function kapatDigerCihazlar() {
+  if (!confirm('Bu cihaz dışındaki tüm oturumlar kapatılacak. Devam edilsin mi?')) return;
+  try {
+    const result = await api('/api/auth/oturumlar/diger-cihazlari-kapat', { method: 'POST' });
+    alert(`${result.kapatilan} oturum kapatıldı.`);
+    yukleOturumlar();
+  } catch (e) { alert('Hata: ' + e.message); }
 }
 
 // ---------------- BAŞLANGIÇ ----------------

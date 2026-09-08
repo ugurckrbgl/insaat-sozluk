@@ -162,6 +162,7 @@ function renderApp() {
         <div class="menu-item ${adminView==='forum'?'active':''}" onclick="setView('forum')">💬 Forum Moderasyon</div>
         <div class="menu-item ${adminView==='kullanicilar'?'active':''}" onclick="setView('kullanicilar')">👥 Kullanıcılar</div>
         <div class="menu-item" onclick="showSifreDegistirModal()">🔑 Şifremi Değiştir</div>
+        <div class="menu-item" onclick="showOturumlarModal()">📱 Oturumlarım</div>
         <div class="menu-item" onclick="window.location.href='./'">🌐 Siteye Dön</div>
         <div class="menu-item" onclick="logout()">🚪 Çıkış (${esc(currentUser.display_name)})</div>
       </div>
@@ -620,12 +621,49 @@ async function doSifreDegistir() {
   if (!eski || !yeni1 || !yeni2) { errEl.textContent = 'Tüm alanları doldurun.'; errEl.style.display = 'block'; return; }
   if (yeni1 !== yeni2) { errEl.textContent = 'Yeni şifreler eşleşmiyor.'; errEl.style.display = 'block'; return; }
   try {
-    await api('/api/auth/sifre-degistir', { method: 'POST', body: JSON.stringify({ eski_sifre: eski, yeni_sifre: yeni1 }) });
+    const result = await api('/api/auth/sifre-degistir', { method: 'POST', body: JSON.stringify({ eski_sifre: eski, yeni_sifre: yeni1 }) });
     document.getElementById('sifreModal').remove();
-    alert('Şifreniz başarıyla değiştirildi.');
+    alert(result.message || 'Şifreniz başarıyla değiştirildi.');
   } catch (e) {
     errEl.textContent = e.message; errEl.style.display = 'block';
   }
+}
+
+// ================= OTURUM YÖNETİMİ =================
+async function showOturumlarModal() {
+  document.body.insertAdjacentHTML('beforeend', `
+    <div class="modal-overlay" id="oturumModal" onclick="if(event.target===this) this.remove()">
+      <div class="modal" style="max-width:480px;">
+        <h3>📱 Aktif Oturumlarım</h3>
+        <div id="oturumListesi" class="empty-note">Yükleniyor...</div>
+        <div style="display:flex; gap:10px; margin-top:16px;">
+          <button class="btn btn-danger" onclick="kapatDigerCihazlar()">Diğer Tüm Cihazlardan Çıkış Yap</button>
+          <button class="btn" onclick="document.getElementById('oturumModal').remove()">Kapat</button>
+        </div>
+      </div>
+    </div>`);
+  try {
+    const data = await api('/api/auth/oturumlar');
+    const list = document.getElementById('oturumListesi');
+    if (!data.oturumlar.length) { list.innerHTML = '<div class="empty-note">Aktif oturum bulunamadı.</div>'; return; }
+    list.className = '';
+    list.innerHTML = data.oturumlar.map(o => `
+      <div class="tree-item" style="cursor:default;">
+        <span>${o.bu_cihaz ? '🟢 Bu cihaz' : '⚪ Başka cihaz'} · ...${esc(o.kimlik)}</span>
+        <span style="color:var(--text-dim);font-size:.78rem;">${new Date(o.created_at).toLocaleString('tr-TR')}</span>
+      </div>`).join('');
+  } catch (e) {
+    document.getElementById('oturumListesi').innerHTML = `<div class="empty-note">Hata: ${esc(e.message)}</div>`;
+  }
+}
+
+async function kapatDigerCihazlar() {
+  if (!confirm('Bu cihaz dışındaki tüm oturumlar kapatılacak. Devam edilsin mi?')) return;
+  try {
+    const result = await api('/api/auth/oturumlar/diger-cihazlari-kapat', { method: 'POST' });
+    alert(`${result.kapatilan} oturum kapatıldı.`);
+    document.getElementById('oturumModal').remove();
+  } catch (e) { alert('Hata: ' + e.message); }
 }
 
 // ================= KULLANICI YÖNETİMİ =================
