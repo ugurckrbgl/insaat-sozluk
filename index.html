@@ -213,8 +213,6 @@
   @media (max-width:900px) {
     .top-bar { padding:0 16px; min-height:62px; }
     .brand-copy small { display:none; }
-    .top-bar nav { overflow-x:auto; padding:8px 0; }
-    .top-bar nav > span { display:none; }
     .search-wrap { padding:0 16px 16px; }
     .search-icon { left:32px; }
     main { padding:22px 16px 56px; }
@@ -224,9 +222,7 @@
   }
   @media (max-width:640px) {
     header { position:relative; }
-    .top-bar { align-items:flex-start; flex-direction:column; gap:8px; padding-top:13px; padding-bottom:8px; }
-    .top-bar nav { width:100%; margin-left:0; }
-    .nav-link,.btn { flex-shrink:0; }
+    .top-bar { padding-top:13px; padding-bottom:13px; }
     .search-wrap { padding-top:5px; }
     .section-cards { grid-template-columns:1fr; }
     .section-card { min-height:158px; }
@@ -288,6 +284,33 @@
   .theme-toggle-icon { font-size:1rem; line-height:1; }
   @media (max-width:640px) { .theme-toggle-label { display:none; } }
   @media (prefers-reduced-motion:reduce) { *,*::before,*::after { scroll-behavior:auto!important; transition:none!important; } }
+
+  /* Mobil hamburger menü / soldan açılan panel */
+  .menu-toggle { display:none; flex-direction:column; justify-content:center; align-items:center; gap:5px; width:42px; height:42px; padding:0; border:1px solid var(--border); border-radius:10px; background:#fff; cursor:pointer; flex-shrink:0; }
+  .menu-toggle span { display:block; width:20px; height:2px; border-radius:2px; background:var(--text); transition:transform .25s ease, opacity .2s ease; }
+  .menu-toggle[aria-expanded="true"] span:nth-child(1) { transform:translateY(7px) rotate(45deg); }
+  .menu-toggle[aria-expanded="true"] span:nth-child(2) { opacity:0; }
+  .menu-toggle[aria-expanded="true"] span:nth-child(3) { transform:translateY(-7px) rotate(-45deg); }
+  .menu-overlay { display:none; position:fixed; inset:0; background:rgba(15,20,26,.45); backdrop-filter:blur(2px); z-index:90; opacity:0; transition:opacity .2s ease; }
+  .menu-overlay.open { display:block; opacity:1; }
+  @media (max-width:900px) {
+    .menu-toggle { display:flex; }
+    .top-bar nav {
+      position:fixed; top:0; left:0; bottom:0; z-index:100; width:min(300px,82vw);
+      flex-direction:column; align-items:stretch; justify-content:flex-start; gap:4px;
+      margin-left:0; padding:76px 16px 24px; overflow-y:auto; overflow-x:hidden;
+      background:#fff; border-right:1px solid var(--border); box-shadow:0 0 40px rgba(16,24,40,.14);
+      transform:translateX(-100%); transition:transform .28s ease;
+    }
+    .top-bar nav.open { transform:translateX(0); }
+    .top-bar nav .nav-link,
+    .top-bar nav .btn { width:100%; justify-content:flex-start; text-align:left; }
+    .top-bar nav .theme-toggle { justify-content:flex-start; }
+    .top-bar nav > span { display:block; padding:10px 12px; }
+  }
+  :root[data-theme="dark"] .menu-toggle { background:var(--bg-card); }
+  :root[data-theme="dark"] .menu-toggle span { background:var(--text); }
+  :root[data-theme="dark"] .top-bar nav { background:var(--bg-card); }
 </style>
 </head>
 <body>
@@ -299,12 +322,16 @@
       <span class="brand-copy">İnşaat Sözlüğü<small>Sektörel bilgi platformu</small></span>
     </div>
     <nav id="navBar" aria-label="Ana menü"></nav>
+    <button id="menuToggle" class="menu-toggle" onclick="toggleMobileMenu()" aria-label="Menüyü aç" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
   </div>
   <div class="search-wrap" id="searchWrap">
     <span class="search-icon" aria-hidden="true">⌕</span>
     <input id="search" type="search" aria-label="Sözlükte terim ara" placeholder="Terim, kategori veya kullanım alanı ara" autocomplete="off">
   </div>
 </header>
+<div id="menuOverlay" class="menu-overlay" onclick="closeMobileMenu()"></div>
 
 <main>
   <div class="breadcrumb" id="breadcrumb"></div>
@@ -353,6 +380,19 @@ function toggleTheme() {
   renderNav();
 }
 
+function toggleMobileMenu() {
+  const isOpen = navBar.classList.toggle('open');
+  document.getElementById('menuOverlay').classList.toggle('open', isOpen);
+  document.getElementById('menuToggle').setAttribute('aria-expanded', String(isOpen));
+  document.body.style.overflow = isOpen ? 'hidden' : '';
+}
+function closeMobileMenu() {
+  navBar.classList.remove('open');
+  document.getElementById('menuOverlay').classList.remove('open');
+  document.getElementById('menuToggle').setAttribute('aria-expanded', 'false');
+  document.body.style.overflow = '';
+}
+
 // Aramayı Türkçe büyük/küçük harf ve aksansız yazım farklarına dayanıklı yapar.
 // Örnek: "ISI YALITIMI", "ısı yalıtımı" ve "isi yalitimi" aynı sonucu bulabilir.
 function normalizeSearchText(value) {
@@ -389,17 +429,17 @@ function terimSearchText(t) {
 
 function renderNav() {
   navBar.innerHTML = `
-    <button class="nav-link ${state.view==='home'||state.view==='bolum'||state.view==='kategori'||state.view==='terim'?'active':''}" onclick="goHome()">Sözlük</button>
-    <button class="nav-link ${state.view.startsWith('forum') && state.view!=='forum-benim'?'active':''}" onclick="goForum()">Forum</button>
+    <button class="nav-link ${state.view==='home'||state.view==='bolum'||state.view==='kategori'||state.view==='terim'?'active':''}" onclick="goHome();closeMobileMenu()">Sözlük</button>
+    <button class="nav-link ${state.view.startsWith('forum') && state.view!=='forum-benim'?'active':''}" onclick="goForum();closeMobileMenu()">Forum</button>
     ${currentUser ? `
-      <button class="nav-link ${state.view==='forum-benim'?'active':''}" onclick="goBenimIceriklerim()">İçeriklerim</button>
+      <button class="nav-link ${state.view==='forum-benim'?'active':''}" onclick="goBenimIceriklerim();closeMobileMenu()">İçeriklerim</button>
       <span style="color:var(--text-dim); font-size:.85rem;">👤 ${esc(currentUser.display_name)}</span>
-      <button class="btn" onclick="showHesabimModal()">Hesabım</button>
+      <button class="btn" onclick="closeMobileMenu();showHesabimModal()">Hesabım</button>
       ${currentUser.role === 'admin' ? '<a href="admin.html" class="btn">Yönetim Paneli</a>' : ''}
-      <button class="btn" onclick="logout()">Çıkış</button>
+      <button class="btn" onclick="closeMobileMenu();logout()">Çıkış</button>
     ` : `
-      <button class="btn" onclick="showLoginModal()">Giriş Yap</button>
-      <button class="btn btn-primary" onclick="showRegisterModal()">Kayıt Ol</button>
+      <button class="btn" onclick="closeMobileMenu();showLoginModal()">Giriş Yap</button>
+      <button class="btn btn-primary" onclick="closeMobileMenu();showRegisterModal()">Kayıt Ol</button>
     `}
     ${themeControl()}
   `;
