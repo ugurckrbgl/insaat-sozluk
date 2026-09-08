@@ -136,6 +136,7 @@ function renderApp() {
         <div class="menu-item ${adminView==='terimler'?'active':''}" onclick="setView('terimler')">📖 Sözlük İçeriği</div>
         <div class="menu-item ${adminView==='forum'?'active':''}" onclick="setView('forum')">💬 Forum Moderasyon</div>
         <div class="menu-item ${adminView==='kullanicilar'?'active':''}" onclick="setView('kullanicilar')">👥 Kullanıcılar</div>
+        <div class="menu-item" onclick="showSifreDegistirModal()">🔑 Şifremi Değiştir</div>
         <div class="menu-item" onclick="window.location.href='/'">🌐 Siteye Dön</div>
         <div class="menu-item" onclick="logout()">🚪 Çıkış (${esc(currentUser.display_name)})</div>
       </div>
@@ -439,6 +440,44 @@ async function modKonu(id, status) {
 async function modYorum(id, status) {
   try { await api(`/api/admin/forum/yorumlar/${id}`, { method: 'PUT', body: JSON.stringify({ status }) }); renderView(); }
   catch (e) { alert('Hata: ' + e.message); }
+}
+
+// ================= ŞİFRE DEĞİŞTİRME =================
+function showSifreDegistirModal() {
+  document.body.insertAdjacentHTML('beforeend', `
+    <div class="modal-overlay" id="sifreModal" onclick="if(event.target===this) this.remove()">
+      <div class="modal" style="max-width:400px;">
+        <h3>🔑 Şifremi Değiştir</h3>
+        <div id="sifreErr" class="error-msg" style="display:none;"></div>
+        <label>Mevcut Şifre</label>
+        <input type="password" id="sEski">
+        <label>Yeni Şifre <span class="yardim-metni">(en az 6 karakter)</span></label>
+        <input type="password" id="sYeni1">
+        <label>Yeni Şifre (tekrar)</label>
+        <input type="password" id="sYeni2">
+        <div style="display:flex; gap:10px; margin-top:20px;">
+          <button class="btn btn-primary" onclick="doSifreDegistir()">Kaydet</button>
+          <button class="btn" onclick="document.getElementById('sifreModal').remove()">İptal</button>
+        </div>
+      </div>
+    </div>`);
+}
+
+async function doSifreDegistir() {
+  const eski = document.getElementById('sEski').value;
+  const yeni1 = document.getElementById('sYeni1').value;
+  const yeni2 = document.getElementById('sYeni2').value;
+  const errEl = document.getElementById('sifreErr');
+  errEl.style.display = 'none';
+  if (!eski || !yeni1 || !yeni2) { errEl.textContent = 'Tüm alanları doldurun.'; errEl.style.display = 'block'; return; }
+  if (yeni1 !== yeni2) { errEl.textContent = 'Yeni şifreler eşleşmiyor.'; errEl.style.display = 'block'; return; }
+  try {
+    await api('/api/auth/sifre-degistir', { method: 'POST', body: JSON.stringify({ eski_sifre: eski, yeni_sifre: yeni1 }) });
+    document.getElementById('sifreModal').remove();
+    alert('Şifreniz başarıyla değiştirildi.');
+  } catch (e) {
+    errEl.textContent = e.message; errEl.style.display = 'block';
+  }
 }
 
 // ================= KULLANICI YÖNETİMİ =================
