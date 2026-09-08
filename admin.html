@@ -70,24 +70,7 @@
 
 
   @media (max-width: 900px) {
-    .layout { display:block; }
-    .sidebar {
-      width:100%; min-height:auto; padding:8px; border-right:0; border-bottom:1px solid var(--border);
-      display:flex; align-items:center; gap:4px; overflow-x:auto; position:sticky; top:0; z-index:50;
-    }
-    .sidebar h1 { border:0; margin:0 8px 0 0; padding:8px; white-space:nowrap; font-size:.9rem; }
-    .sidebar .menu-item { padding:9px 11px; white-space:nowrap; border-radius:7px; flex-shrink:0; font-size:.82rem; }
-    .sidebar .menu-item.active { border-right:0; border-bottom:2px solid var(--accent); }
-    .content-area { padding:16px 12px 40px; overflow-x:auto; }
-    .page-title { font-size:1.15rem; gap:10px; flex-wrap:wrap; }
-    table { min-width:720px; }
-    th, td { padding:9px 10px; }
-    .tree-item { flex-wrap:wrap; gap:8px; }
-    .tree-item > span:first-child { min-width:180px; }
     .form-row, .modal .form-row { flex-direction:column; gap:0; }
-    .modal-overlay { align-items:flex-start; padding:12px 0; }
-    .modal { width:95%; padding:20px 16px; max-height:94vh; }
-    .login-box { width:calc(100% - 24px); padding:24px 18px; }
   }
 
   /* 2026 modern yönetim arayüzü */
@@ -152,12 +135,6 @@
   .modal h3 { margin-top:0; font-size:1.2rem; letter-spacing:-.025em; }
   .modal label { color:#56616d; }
   @media (max-width:900px) {
-    .layout { display:block; }
-    .sidebar { width:100%; height:auto; min-height:auto; padding:8px 10px; border-bottom:0; background:rgba(23,32,42,.97); backdrop-filter:blur(16px); }
-    .sidebar h1 { margin:0 6px 0 0; padding:2px 10px 2px 2px; border:0; font-size:0; }
-    .sidebar h1::before { width:32px; height:32px; flex-basis:32px; }
-    .sidebar .menu-item { padding:9px 11px; color:#bdc5ce; }
-    .sidebar .menu-item.active { border:0; box-shadow:inset 0 -2px 0 var(--accent); }
     .content-area { width:100%; padding:24px 16px 50px; }
     table { min-width:720px; }
     .page-title { font-size:1.25rem; }
@@ -170,6 +147,32 @@
     .modal-overlay { align-items:flex-end; padding:8px; }
     .modal { width:100%; max-height:94vh; padding:22px 16px; border-radius:20px 20px 12px 12px; }
     .login-box { width:100%; padding:28px 20px; }
+  }
+
+  /* Mobil hamburger menü / soldan açılan sidebar paneli */
+  .mobile-topbar { display:none; }
+  .menu-toggle { display:none; flex-direction:column; justify-content:center; align-items:center; gap:5px; width:42px; height:42px; padding:0; border:1px solid var(--border); border-radius:10px; background:var(--bg-card); cursor:pointer; flex-shrink:0; }
+  .menu-toggle span { display:block; width:20px; height:2px; border-radius:2px; background:var(--text); transition:transform .25s ease, opacity .2s ease; }
+  .menu-toggle[aria-expanded="true"] span:nth-child(1) { transform:translateY(7px) rotate(45deg); }
+  .menu-toggle[aria-expanded="true"] span:nth-child(2) { opacity:0; }
+  .menu-toggle[aria-expanded="true"] span:nth-child(3) { transform:translateY(-7px) rotate(-45deg); }
+  .menu-overlay { display:none; position:fixed; inset:0; background:rgba(15,20,26,.45); z-index:90; opacity:0; transition:opacity .2s ease; }
+  .menu-overlay.open { display:block; opacity:1; }
+  @media (max-width:900px) {
+    .mobile-topbar { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:12px 16px; background:var(--sidebar); position:sticky; top:0; z-index:80; }
+    .mobile-topbar .brand { display:flex; align-items:center; gap:10px; color:#fff; font-weight:700; font-size:.92rem; }
+    .mobile-topbar .brand::before { content:"İS"; display:grid; place-items:center; width:32px; height:32px; border-radius:9px; background:var(--accent); color:#fff; font-size:.68rem; flex:0 0 32px; }
+    .menu-toggle { display:flex; }
+    .sidebar {
+      position:fixed; top:0; left:0; bottom:0; z-index:100; width:min(280px,82vw); height:100vh;
+      padding:20px 12px; overflow-y:auto; transform:translateX(-100%); transition:transform .28s ease;
+      display:block;
+    }
+    .sidebar.open { transform:translateX(0); }
+  }
+  @media (min-width:901px) {
+    .menu-toggle { display:none; }
+    .menu-overlay { display:none !important; }
   }
   :root[data-theme="dark"] {
     --bg:#0e141b; --bg-card:#171e27; --bg-card-hover:#1d2732; --border:#2c3845;
@@ -292,22 +295,45 @@ function logout() {
 
 function renderApp() {
   document.getElementById('app').innerHTML = `
+    <div class="mobile-topbar">
+      <div class="brand">Yönetim Paneli</div>
+      <button id="menuToggle" class="menu-toggle" onclick="toggleMobileMenu()" aria-label="Menüyü aç" aria-expanded="false">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+    <div id="menuOverlay" class="menu-overlay" onclick="closeMobileMenu()"></div>
     <div class="layout">
-      <div class="sidebar">
+      <div class="sidebar" id="sidebar">
         <h1>Yönetim Paneli</h1>
-        <div class="menu-item ${adminView==='terimler'?'active':''}" onclick="setView('terimler')">📖 Sözlük İçeriği</div>
-        <div class="menu-item ${adminView==='forum'?'active':''}" onclick="setView('forum')">💬 Forum Moderasyon</div>
-        <div class="menu-item ${adminView==='kullanicilar'?'active':''}" onclick="setView('kullanicilar')">👥 Kullanıcılar</div>
-        <div class="menu-item" onclick="showSifreDegistirModal()">🔑 Şifremi Değiştir</div>
-        <div class="menu-item" onclick="showOturumlarModal()">📱 Oturumlarım</div>
+        <div class="menu-item ${adminView==='terimler'?'active':''}" onclick="setView('terimler');closeMobileMenu()">📖 Sözlük İçeriği</div>
+        <div class="menu-item ${adminView==='forum'?'active':''}" onclick="setView('forum');closeMobileMenu()">💬 Forum Moderasyon</div>
+        <div class="menu-item ${adminView==='kullanicilar'?'active':''}" onclick="setView('kullanicilar');closeMobileMenu()">👥 Kullanıcılar</div>
+        <div class="menu-item" onclick="closeMobileMenu();showSifreDegistirModal()">🔑 Şifremi Değiştir</div>
+        <div class="menu-item" onclick="closeMobileMenu();showOturumlarModal()">📱 Oturumlarım</div>
         <div class="menu-item" onclick="toggleTheme()"><span class="theme-menu-icon" data-theme-icon>${themeIcon()}</span> <span data-theme-label>${themeLabel()}</span></div>
         <div class="menu-item" onclick="window.location.href='./'">🌐 Siteye Dön</div>
-        <div class="menu-item" onclick="logout()">🚪 Çıkış (${esc(currentUser.display_name)})</div>
+        <div class="menu-item" onclick="closeMobileMenu();logout()">🚪 Çıkış (${esc(currentUser.display_name)})</div>
       </div>
       <div class="content-area" id="contentArea"></div>
     </div>
   `;
   renderView();
+}
+
+function toggleMobileMenu() {
+  const sidebar = document.getElementById('sidebar');
+  const isOpen = sidebar.classList.toggle('open');
+  document.getElementById('menuOverlay').classList.toggle('open', isOpen);
+  document.getElementById('menuToggle').setAttribute('aria-expanded', String(isOpen));
+  document.body.style.overflow = isOpen ? 'hidden' : '';
+}
+function closeMobileMenu() {
+  const sidebar = document.getElementById('sidebar');
+  if (!sidebar) return;
+  sidebar.classList.remove('open');
+  document.getElementById('menuOverlay').classList.remove('open');
+  document.getElementById('menuToggle').setAttribute('aria-expanded', 'false');
+  document.body.style.overflow = '';
 }
 
 function setView(v) { adminView = v; if (v === 'kullanicilar') usersPage = 1; treeState = { bolumKod: null, anaKatKod: null, katKod: null }; renderView(); }
