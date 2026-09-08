@@ -128,7 +128,7 @@
   <div id="content">Yükleniyor...</div>
 </main>
 
-<footer>İnşaat & Tedarikçi Terimleri Sözlüğü · <span id="termCount"></span> terim · <a href="/admin.html" style="color:var(--text-dim)">Yönetim Paneli</a></footer>
+<footer>İnşaat & Tedarikçi Terimleri Sözlüğü · <span id="termCount"></span> terim · <a href="admin.html" style="color:var(--text-dim)">Yönetim Paneli</a></footer>
 
 <div id="modalRoot"></div>
 
@@ -197,7 +197,7 @@ function renderNav() {
     ${currentUser ? `
       <button class="nav-link ${state.view==='forum-benim'?'active':''}" onclick="goBenimIceriklerim()">İçeriklerim</button>
       <span style="color:var(--text-dim); font-size:.85rem;">👤 ${esc(currentUser.display_name)}</span>
-      ${currentUser.role === 'admin' ? '<a href="/admin.html" class="btn">Yönetim Paneli</a>' : ''}
+      ${currentUser.role === 'admin' ? '<a href="admin.html" class="btn">Yönetim Paneli</a>' : ''}
       <button class="btn" onclick="logout()">Çıkış</button>
     ` : `
       <button class="btn" onclick="showLoginModal()">Giriş Yap</button>

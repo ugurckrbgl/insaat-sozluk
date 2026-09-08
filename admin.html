@@ -113,7 +113,7 @@ async function boot() {
   try {
     const me = await api('/api/auth/me');
     if (me.user.role !== 'admin') {
-      document.getElementById('app').innerHTML = '<div class="login-screen"><div class="login-box"><h3>Erişim Reddedildi</h3><p style="color:var(--text-dim);">Bu panele sadece yöneticiler erişebilir.</p><a href="/" style="color:var(--accent-2);">Ana sayfaya dön</a></div></div>';
+      document.getElementById('app').innerHTML = '<div class="login-screen"><div class="login-box"><h3>Erişim Reddedildi</h3><p style="color:var(--text-dim);">Bu panele sadece yöneticiler erişebilir.</p><a href="./" style="color:var(--accent-2);">Ana sayfaya dön</a></div></div>';
       return;
     }
     currentUser = me.user;
@@ -161,7 +161,7 @@ function renderApp() {
         <div class="menu-item ${adminView==='forum'?'active':''}" onclick="setView('forum')">💬 Forum Moderasyon</div>
         <div class="menu-item ${adminView==='kullanicilar'?'active':''}" onclick="setView('kullanicilar')">👥 Kullanıcılar</div>
         <div class="menu-item" onclick="showSifreDegistirModal()">🔑 Şifremi Değiştir</div>
-        <div class="menu-item" onclick="window.location.href='/'">🌐 Siteye Dön</div>
+        <div class="menu-item" onclick="window.location.href='./'">🌐 Siteye Dön</div>
         <div class="menu-item" onclick="logout()">🚪 Çıkış (${esc(currentUser.display_name)})</div>
       </div>
       <div class="content-area" id="contentArea"></div>
