@@ -98,9 +98,15 @@
   .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,.6); display:flex; align-items:center; justify-content:center; z-index:100; }
   .modal { background:var(--bg-card); border:1px solid var(--border); border-radius:14px; padding:28px; max-width:400px; width:90%; }
   .modal h3 { margin-top:0; }
-  .modal input { width:100%; padding:10px 12px; border-radius:8px; border:1px solid var(--border); background:var(--bg); color:var(--text); font:inherit; margin-bottom:12px; }
+  .modal input, .modal textarea, .modal select { width:100%; padding:10px 12px; border-radius:8px; border:1px solid var(--border); background:var(--bg); color:var(--text); font:inherit; margin-bottom:12px; }
+  .modal textarea { min-height:140px; resize:vertical; }
   .modal .error-msg { color:var(--negative); font-size:.85rem; margin-bottom:10px; }
   .modal-close { float:right; cursor:pointer; color:var(--text-dim); font-size:1.2rem; }
+  .content-actions { display:flex; gap:8px; flex-wrap:wrap; margin-top:12px; }
+  .status-badge { display:inline-block; padding:3px 9px; border-radius:999px; font-size:.72rem; }
+  .status-yayinda { color:var(--positive); background:rgba(74,222,128,.12); }
+  .status-onay_bekliyor { color:var(--accent-2); background:rgba(244,163,0,.12); }
+  .status-reddedildi, .status-kapatildi { color:var(--negative); background:rgba(248,113,113,.12); }
   ::selection { background:var(--accent); color:white; }
 </style>
 </head>
@@ -130,6 +136,7 @@
 const API = "https://insaat-sozluk-api.ugurckrbgl.workers.dev";
 let DATA = null;
 const state = { view: 'home', bolumKod: null, anaKatKod: null, katKod: null, terimId: null, query: '', forumKonuId: null };
+let forumEditCache = { konular: {}, yorumlar: {} };
 let currentUser = JSON.parse(localStorage.getItem('sozluk_user') || 'null');
 let authToken = localStorage.getItem('sozluk_token') || null;
 
@@ -188,6 +195,7 @@ function renderNav() {
     <button class="nav-link ${state.view==='home'||state.view==='bolum'||state.view==='kategori'||state.view==='terim'?'active':''}" onclick="goHome()">Sözlük</button>
     <button class="nav-link ${state.view.startsWith('forum')?'active':''}" onclick="goForum()">Forum</button>
     ${currentUser ? `
+      <button class="nav-link ${state.view==='forum-benim'?'active':''}" onclick="goBenimIceriklerim()">İçeriklerim</button>
       <span style="color:var(--text-dim); font-size:.85rem;">👤 ${esc(currentUser.display_name)}</span>
       ${currentUser.role === 'admin' ? '<a href="/admin.html" class="btn">Yönetim Paneli</a>' : ''}
       <button class="btn" onclick="logout()">Çıkış</button>
@@ -249,6 +257,7 @@ function render() {
   else if (state.view === 'forum-list') renderForumList();
   else if (state.view === 'forum-detay') renderForumDetay();
   else if (state.view === 'forum-yeni') renderForumYeni();
+  else if (state.view === 'forum-benim') renderBenimIceriklerim();
 }
 
 function renderHome() {
@@ -411,6 +420,12 @@ function goForum() {
   document.getElementById('search').value = '';
   render();
 }
+function goBenimIceriklerim() {
+  if (!currentUser) { showLoginModal('İçeriklerinizi görmek için giriş yapmalısınız.'); return; }
+  state.view = 'forum-benim'; state.query = '';
+  document.getElementById('search').value = '';
+  render();
+}
 function goForumYeni(terimId, terimAdi) {
   state.view = 'forum-yeni'; state.prefillTerim = terimId ? { id: terimId, adi: terimAdi } : null;
   render();
@@ -449,16 +464,139 @@ async function renderForumList() {
   }
 }
 
+function forumStatusLabel(status) {
+  const labels = { yayinda: 'Yayında', onay_bekliyor: 'Onay bekliyor', reddedildi: 'Reddedildi', kapatildi: 'Kapatıldı' };
+  return labels[status] || status;
+}
+
+async function renderBenimIceriklerim() {
+  setBreadcrumb([{ label: 'Ana Sayfa', action: goHome }, { label: 'Forum', action: goForum }, { label: 'İçeriklerim' }]);
+  contentEl.innerHTML = '<div class="empty-state">Yükleniyor...</div>';
+  try {
+    const data = await api('/api/forum/benim-iceriklerim');
+    forumEditCache = {
+      konular: Object.fromEntries(data.konular.map(k => [k.id, k])),
+      yorumlar: Object.fromEntries(data.yorumlar.map(y => [y.id, y])),
+    };
+    const konular = data.konular.length ? data.konular.map(k => `
+      <div class="forum-item">
+        <span class="status-badge status-${esc(k.status)}">${esc(forumStatusLabel(k.status))}</span>
+        <h4 style="margin-top:8px;">${esc(k.baslik)}</h4>
+        <div class="meta"><span>${new Date(k.created_at).toLocaleString('tr-TR')}</span><span>${esc(k.kategori)}</span></div>
+        <div class="content-actions">
+          ${k.status === 'yayinda' ? `<button class="btn" onclick="goForumDetay(${k.id})">Görüntüle</button>` : ''}
+          <button class="btn" onclick="showKonuEditModal(${k.id})">Düzenle</button>
+          <button class="btn" onclick="deleteForumKonu(${k.id})" style="color:var(--negative);">Sil</button>
+        </div>
+      </div>`).join('') : '<div class="empty-state">Henüz açtığınız konu yok.</div>';
+    const yorumlar = data.yorumlar.length ? data.yorumlar.map(y => `
+      <div class="comment">
+        <span class="status-badge status-${esc(y.status)}">${esc(forumStatusLabel(y.status))}</span>
+        <div class="meta" style="margin-top:8px;">${esc(y.konu_baslik)} · ${new Date(y.created_at).toLocaleString('tr-TR')}</div>
+        <div>${esc(y.icerik)}</div>
+        <div class="content-actions">
+          ${y.status === 'yayinda' ? `<button class="btn" onclick="goForumDetay(${y.konu_id})">Konuyu Görüntüle</button>` : ''}
+          <button class="btn" onclick="showYorumEditModal(${y.id})">Düzenle</button>
+          <button class="btn" onclick="deleteForumYorum(${y.id})" style="color:var(--negative);">Sil</button>
+        </div>
+      </div>`).join('') : '<div class="empty-state">Henüz yazdığınız yorum yok.</div>';
+    contentEl.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:18px;">
+        <h2 style="margin:0;">İçeriklerim</h2>
+        <button class="btn btn-primary" onclick="goForumYeni()">+ Yeni Konu Aç</button>
+      </div>
+      <h3>Konularım (${data.konular.length})</h3><div class="forum-list">${konular}</div>
+      <h3 style="margin-top:30px;">Yorumlarım (${data.yorumlar.length})</h3>${yorumlar}`;
+  } catch (e) {
+    contentEl.innerHTML = `<div class="empty-state">Hata: ${esc(e.message)}</div>`;
+  }
+}
+
+function showKonuEditModal(id) {
+  const k = forumEditCache.konular[id];
+  if (!k) return;
+  const kategoriler = [
+    ['genel', 'Genel Tartışma'], ['soru', 'Soru'],
+    ['uzmanlik-paylasimi', 'Uzmanlık Paylaşımı'], ['urun-tanitim', 'Ürün / Hizmet Tanıtımı']
+  ];
+  document.getElementById('modalRoot').innerHTML = `
+    <div class="modal-overlay" onclick="if(event.target===this) closeModal()"><div class="modal">
+      <span class="modal-close" onclick="closeModal()">✕</span><h3>Konuyu Düzenle</h3>
+      <div class="error-msg" id="forumEditErr" style="display:none;"></div>
+      <label>Kategori</label><select id="editKonuKategori">${kategoriler.map(([v,l])=>`<option value="${v}" ${k.kategori===v?'selected':''}>${l}</option>`).join('')}</select>
+      <label>Başlık</label><input id="editKonuBaslik" value="${esc(k.baslik)}">
+      <label>İçerik</label><textarea id="editKonuIcerik">${esc(k.icerik)}</textarea>
+      ${currentUser.role === 'admin' ? '' : '<div style="color:var(--text-dim);font-size:.8rem;margin-bottom:12px;">Değişiklikler yeniden yönetici onayına gönderilir.</div>'}
+      <button class="btn btn-primary" style="width:100%;" onclick="saveForumKonu(${id})">Kaydet</button>
+    </div></div>`;
+}
+
+async function saveForumKonu(id) {
+  const body = {
+    kategori: document.getElementById('editKonuKategori').value,
+    baslik: document.getElementById('editKonuBaslik').value.trim(),
+    icerik: document.getElementById('editKonuIcerik').value.trim(),
+  };
+  const errEl = document.getElementById('forumEditErr');
+  if (!body.baslik || !body.icerik) { errEl.textContent = 'Başlık ve içerik zorunludur.'; errEl.style.display = 'block'; return; }
+  try {
+    const result = await api(`/api/forum/konular/${id}`, { method:'PUT', body:JSON.stringify(body) });
+    closeModal(); alert(result.message); goBenimIceriklerim();
+  } catch (e) { errEl.textContent = e.message; errEl.style.display = 'block'; }
+}
+
+function showYorumEditModal(id) {
+  const y = forumEditCache.yorumlar[id];
+  if (!y) return;
+  document.getElementById('modalRoot').innerHTML = `
+    <div class="modal-overlay" onclick="if(event.target===this) closeModal()"><div class="modal">
+      <span class="modal-close" onclick="closeModal()">✕</span><h3>Yorumu Düzenle</h3>
+      <div class="error-msg" id="forumEditErr" style="display:none;"></div>
+      <label>Yorum</label><textarea id="editYorumIcerik">${esc(y.icerik)}</textarea>
+      ${currentUser.role === 'admin' ? '' : '<div style="color:var(--text-dim);font-size:.8rem;margin-bottom:12px;">Değişiklikler yeniden yönetici onayına gönderilir.</div>'}
+      <button class="btn btn-primary" style="width:100%;" onclick="saveForumYorum(${id})">Kaydet</button>
+    </div></div>`;
+}
+
+async function saveForumYorum(id) {
+  const icerik = document.getElementById('editYorumIcerik').value.trim();
+  const errEl = document.getElementById('forumEditErr');
+  if (!icerik) { errEl.textContent = 'Yorum içeriği zorunludur.'; errEl.style.display = 'block'; return; }
+  try {
+    const result = await api(`/api/forum/yorumlar/${id}`, { method:'PUT', body:JSON.stringify({ icerik }) });
+    closeModal(); alert(result.message); goBenimIceriklerim();
+  } catch (e) { errEl.textContent = e.message; errEl.style.display = 'block'; }
+}
+
+async function deleteForumKonu(id) {
+  if (!confirm('Bu konuyu ve konuya yazılmış tüm yorumları kalıcı olarak silmek istediğinize emin misiniz?')) return;
+  try { await api(`/api/forum/konular/${id}`, { method:'DELETE' }); alert('Konu silindi.'); goBenimIceriklerim(); }
+  catch (e) { alert('Hata: ' + e.message); }
+}
+
+async function deleteForumYorum(id) {
+  if (!confirm('Bu yorumu kalıcı olarak silmek istediğinize emin misiniz?')) return;
+  try { await api(`/api/forum/yorumlar/${id}`, { method:'DELETE' }); alert('Yorum silindi.'); goBenimIceriklerim(); }
+  catch (e) { alert('Hata: ' + e.message); }
+}
+
 async function renderForumDetay() {
   setBreadcrumb([{ label: 'Ana Sayfa', action: goHome }, { label: 'Forum', action: goForum }, { label: 'Konu' }]);
   contentEl.innerHTML = '<div class="empty-state">Yükleniyor...</div>';
   try {
     const data = await api('/api/forum/konular/' + state.forumKonuId);
-    const yorumlar = data.yorumlar.map(y => `
+    forumEditCache.konular[data.konu.id] = data.konu;
+    data.yorumlar.forEach(y => { forumEditCache.yorumlar[y.id] = y; });
+    const yorumlar = data.yorumlar.map(y => {
+      const canManage = currentUser && (currentUser.id === y.user_id || currentUser.role === 'admin');
+      return `
       <div class="comment">
         <div class="meta">👤 ${esc(y.display_name)}${y.uzmanlik_alani ? ' · '+esc(y.uzmanlik_alani) : ''} · ${new Date(y.created_at).toLocaleString('tr-TR')}</div>
         <div>${esc(y.icerik)}</div>
-      </div>`).join('') || '<div style="color:var(--text-dim);">Henüz yorum yok.</div>';
+        ${canManage ? `<div class="content-actions"><button class="btn" onclick="showYorumEditModal(${y.id})">Düzenle</button><button class="btn" onclick="deleteForumYorum(${y.id})" style="color:var(--negative);">Sil</button></div>` : ''}
+      </div>`;
+    }).join('') || '<div style="color:var(--text-dim);">Henüz yorum yok.</div>';
+    const canManageKonu = currentUser && (currentUser.id === data.konu.user_id || currentUser.role === 'admin');
     const yorumForm = currentUser ? `
       <div class="form-box">
         <label>Yorumunuz</label>
@@ -472,6 +610,7 @@ async function renderForumDetay() {
         <h2>${esc(data.konu.baslik)}</h2>
         <div style="color:var(--text-dim); font-size:.85rem; margin-bottom:16px;">👤 ${esc(data.konu.display_name)}${data.konu.uzmanlik_alani ? ' · '+esc(data.konu.uzmanlik_alani) : ''} · ${new Date(data.konu.created_at).toLocaleString('tr-TR')}</div>
         <div class="rich-intro">${esc(data.konu.icerik)}</div>
+        ${canManageKonu ? `<div class="content-actions"><button class="btn" onclick="showKonuEditModal(${data.konu.id})">Düzenle</button><button class="btn" onclick="deleteForumKonu(${data.konu.id})" style="color:var(--negative);">Sil</button></div>` : ''}
       </div></div>
       <div class="rich-section" style="margin-top:24px;">
         <h3>💬 Yorumlar (${data.yorumlar.length})</h3>
