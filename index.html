@@ -291,26 +291,28 @@
   .menu-toggle[aria-expanded="true"] span:nth-child(1) { transform:translateY(7px) rotate(45deg); }
   .menu-toggle[aria-expanded="true"] span:nth-child(2) { opacity:0; }
   .menu-toggle[aria-expanded="true"] span:nth-child(3) { transform:translateY(-7px) rotate(-45deg); }
-  .menu-overlay { display:none; position:fixed; inset:0; background:rgba(15,20,26,.45); backdrop-filter:blur(2px); z-index:90; opacity:0; transition:opacity .2s ease; }
+  .menu-overlay { display:none; position:fixed; inset:0; background:rgba(15,20,26,.45); z-index:90; opacity:0; transition:opacity .2s ease; }
   .menu-overlay.open { display:block; opacity:1; }
-  @media (max-width:900px) {
-    .menu-toggle { display:flex; }
-    .top-bar nav {
-      position:fixed; top:0; left:0; bottom:0; z-index:100; width:min(300px,82vw);
-      flex-direction:column; align-items:stretch; justify-content:flex-start; gap:4px;
-      margin-left:0; padding:76px 16px 24px; overflow-y:auto; overflow-x:hidden;
-      background:#fff; border-right:1px solid var(--border); box-shadow:0 0 40px rgba(16,24,40,.14);
-      transform:translateX(-100%); transition:transform .28s ease;
-    }
-    .top-bar nav.open { transform:translateX(0); }
-    .top-bar nav .nav-link,
-    .top-bar nav .btn { width:100%; justify-content:flex-start; text-align:left; }
-    .top-bar nav .theme-toggle { justify-content:flex-start; }
-    .top-bar nav > span { display:block; padding:10px 12px; }
+  #navBar {
+    position:fixed; top:0; left:0; bottom:0; z-index:100; width:min(300px,82vw);
+    display:flex; flex-direction:column; align-items:stretch; justify-content:flex-start; gap:4px;
+    padding:24px 16px; overflow-y:auto; overflow-x:hidden;
+    background:#fff; border-right:1px solid var(--border); box-shadow:0 0 40px rgba(16,24,40,.14);
+    transform:translateX(-100%); transition:transform .28s ease;
+  }
+  #navBar.open { transform:translateX(0); }
+  #navBar .nav-link,
+  #navBar .btn { width:100%; justify-content:flex-start; text-align:left; }
+  #navBar .theme-toggle { justify-content:flex-start; }
+  #navBar > span { display:block; padding:10px 12px; }
+  @media (min-width:901px) {
+    .menu-toggle { display:none; }
+    .menu-overlay { display:none !important; }
+    #navBar { display:none; }
   }
   :root[data-theme="dark"] .menu-toggle { background:var(--bg-card); }
   :root[data-theme="dark"] .menu-toggle span { background:var(--text); }
-  :root[data-theme="dark"] .top-bar nav { background:var(--bg-card); }
+  :root[data-theme="dark"] #navBar { background:var(--bg-card); }
 </style>
 </head>
 <body>
@@ -321,7 +323,7 @@
       <span class="brand-mark">İS</span>
       <span class="brand-copy">İnşaat Sözlüğü<small>Sektörel bilgi platformu</small></span>
     </div>
-    <nav id="navBar" aria-label="Ana menü"></nav>
+    <nav id="navBarDesktop" aria-label="Ana menü"></nav>
     <button id="menuToggle" class="menu-toggle" onclick="toggleMobileMenu()" aria-label="Menüyü aç" aria-expanded="false">
       <span></span><span></span><span></span>
     </button>
@@ -332,6 +334,7 @@
   </div>
 </header>
 <div id="menuOverlay" class="menu-overlay" onclick="closeMobileMenu()"></div>
+<nav id="navBar" aria-label="Mobil menü"></nav>
 
 <main>
   <div class="breadcrumb" id="breadcrumb"></div>
@@ -353,6 +356,7 @@ let authToken = localStorage.getItem('sozluk_token') || null;
 const contentEl = document.getElementById('content');
 const breadcrumbEl = document.getElementById('breadcrumb');
 const navBar = document.getElementById('navBar');
+const navBarDesktop = document.getElementById('navBarDesktop');
 
 async function api(path, opts = {}) {
   const headers = opts.headers || {};
@@ -428,7 +432,7 @@ function terimSearchText(t) {
 }
 
 function renderNav() {
-  navBar.innerHTML = `
+  const html = `
     <button class="nav-link ${state.view==='home'||state.view==='bolum'||state.view==='kategori'||state.view==='terim'?'active':''}" onclick="goHome();closeMobileMenu()">Sözlük</button>
     <button class="nav-link ${state.view.startsWith('forum') && state.view!=='forum-benim'?'active':''}" onclick="goForum();closeMobileMenu()">Forum</button>
     ${currentUser ? `
@@ -443,6 +447,8 @@ function renderNav() {
     `}
     ${themeControl()}
   `;
+  navBar.innerHTML = html;
+  navBarDesktop.innerHTML = html;
 }
 
 let breadcrumbActions = [];
