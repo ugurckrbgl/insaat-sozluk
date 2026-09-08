@@ -136,7 +136,15 @@
   .modal label { color:#56616d; }
   @media (max-width:900px) {
     .content-area { width:100%; padding:24px 16px 50px; }
-    table { min-width:720px; }
+    table { min-width:0; width:100%; border:0; box-shadow:none; background:transparent; }
+    thead { display:none; }
+    tbody { display:flex; flex-direction:column; gap:10px; }
+    tr { display:block; border:1px solid var(--border); border-radius:14px; background:var(--bg-card); box-shadow:var(--shadow); padding:6px 4px; }
+    td { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:9px 12px; border-bottom:1px solid var(--border); text-align:right; white-space:normal !important; max-width:none !important; }
+    tr td:last-child { border-bottom:0; }
+    td[data-label]::before { content:attr(data-label); color:var(--text-dim); font-size:.7rem; font-weight:700; text-transform:uppercase; letter-spacing:.04em; text-align:left; flex-shrink:0; }
+    td[data-label=""]::before { display:none; }
+    td[data-label=""] { justify-content:flex-start; flex-wrap:wrap; gap:8px; }
     .page-title { font-size:1.25rem; }
     .modal-overlay { padding:12px; }
   }
@@ -410,10 +418,10 @@ function renderTerimlerView(area) {
   html += `<table><thead><tr><th>Görsel</th><th>Terim</th><th>Anlam</th><th></th></tr></thead><tbody>`;
   html += k.terimler.map(t => `
     <tr>
-      <td>${t.gorsel ? `<img class="img-thumb" src="${API}/${t.gorsel}">` : '—'}</td>
-      <td>${esc(t.terim)}</td>
-      <td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(t.anlam)}</td>
-      <td>
+      <td data-label="Görsel">${t.gorsel ? `<img class="img-thumb" src="${API}/${t.gorsel}">` : '—'}</td>
+      <td data-label="Terim">${esc(t.terim)}</td>
+      <td data-label="Anlam" style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(t.anlam)}</td>
+      <td data-label="">
         <button class="btn btn-sm" onclick="showTerimEditModal(${t.id}, ${k.id})">Düzenle</button>
         <button class="btn btn-sm btn-danger" onclick="deleteTerim(${t.id})">Sil</button>
       </td>
@@ -714,10 +722,10 @@ async function renderForumModView(area) {
       html += `<table><thead><tr><th>Başlık</th><th>Yazan</th><th>Kategori</th><th></th></tr></thead><tbody>`;
       html += data.konular.map(k => `
         <tr>
-          <td>${esc(k.baslik)}<br><span style="color:var(--text-dim);font-size:.78rem;">${esc(k.icerik.slice(0,100))}...</span></td>
-          <td>${esc(k.display_name)}</td>
-          <td>${esc(k.kategori)}</td>
-          <td>
+          <td data-label="Başlık">${esc(k.baslik)}<br><span style="color:var(--text-dim);font-size:.78rem;">${esc(k.icerik.slice(0,100))}...</span></td>
+          <td data-label="Yazan">${esc(k.display_name)}</td>
+          <td data-label="Kategori">${esc(k.kategori)}</td>
+          <td data-label="">
             <button class="btn btn-sm btn-primary" onclick="modKonu(${k.id},'yayinda')">Onayla</button>
             <button class="btn btn-sm btn-danger" onclick="modKonu(${k.id},'reddedildi')">Reddet</button>
           </td>
@@ -730,10 +738,10 @@ async function renderForumModView(area) {
       html += `<table><thead><tr><th>Konu</th><th>Yorum</th><th>Yazan</th><th></th></tr></thead><tbody>`;
       html += data.yorumlar.map(y => `
         <tr>
-          <td>${esc(y.konu_baslik)}</td>
-          <td>${esc(y.icerik.slice(0,100))}</td>
-          <td>${esc(y.display_name)}</td>
-          <td>
+          <td data-label="Konu">${esc(y.konu_baslik)}</td>
+          <td data-label="Yorum">${esc(y.icerik.slice(0,100))}</td>
+          <td data-label="Yazan">${esc(y.display_name)}</td>
+          <td data-label="">
             <button class="btn btn-sm btn-primary" onclick="modYorum(${y.id},'yayinda')">Onayla</button>
             <button class="btn btn-sm btn-danger" onclick="modYorum(${y.id},'reddedildi')">Reddet</button>
           </td>
@@ -840,12 +848,12 @@ async function renderKullanicilarView(area) {
     html += `<table><thead><tr><th>Ad</th><th>E-posta</th><th>Uzmanlık</th><th>Rol</th><th>Durum</th><th></th></tr></thead><tbody>`;
     html += data.kullanicilar.map(u => `
       <tr>
-        <td>${esc(u.display_name)}</td>
-        <td>${esc(u.email)}</td>
-        <td>${esc(u.uzmanlik_alani||'—')}</td>
-        <td><span class="badge ${u.role==='admin'?'badge-admin':'badge-user'}">${u.role}</span></td>
-        <td><span class="badge ${u.status==='active'?'badge-active':'badge-suspended'}">${u.status}</span></td>
-        <td>
+        <td data-label="Ad">${esc(u.display_name)}</td>
+        <td data-label="E-posta">${esc(u.email)}</td>
+        <td data-label="Uzmanlık">${esc(u.uzmanlik_alani||'—')}</td>
+        <td data-label="Rol"><span class="badge ${u.role==='admin'?'badge-admin':'badge-user'}">${u.role}</span></td>
+        <td data-label="Durum"><span class="badge ${u.status==='active'?'badge-active':'badge-suspended'}">${u.status}</span></td>
+        <td data-label="">
           ${u.role === 'user'
             ? `<button class="btn btn-sm" onclick="setRole(${u.id},'admin')">Admin Yap</button>`
             : (u.id !== currentUser.id ? `<button class="btn btn-sm" onclick="setRole(${u.id},'user')">Admin Yetkisini Al</button>` : '')}
