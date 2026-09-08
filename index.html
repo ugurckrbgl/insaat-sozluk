@@ -9,6 +9,12 @@
 <meta property="og:type" content="website">
 <meta property="og:title" content="İnşaat & Tedarikçi Terimleri Sözlüğü">
 <meta property="og:description" content="İnşaat ve tedarik alanındaki terimleri açıklamaları, kullanım alanları ve görselleriyle inceleyin.">
+<script>
+  (() => {
+    const saved = localStorage.getItem('sozluk_theme');
+    document.documentElement.dataset.theme = saved || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+  })();
+</script>
 <style>
   :root {
     --bg: #0f1115; --bg-card: #171a21; --bg-card-hover: #1f232c; --border: #2a2f3a;
@@ -115,7 +121,7 @@
   ::selection { background:var(--accent); color:white; }
 
   /* 2026 modern uygulama arayüzü */
-  :root {
+  :root, :root[data-theme="light"] {
     --bg:#f4f6f8; --bg-card:#ffffff; --bg-card-hover:#f8fafc; --border:#e2e7ec;
     --accent:#e14b2b; --accent-strong:#bb3218; --accent-soft:#fff0eb; --accent-2:#a85d16;
     --text:#17202a; --text-dim:#66717e; --positive:#18864b; --negative:#c43d3d;
@@ -234,6 +240,52 @@
     .modal-overlay { padding:10px; align-items:flex-end; }
     .modal { width:100%; max-width:none; max-height:92vh; overflow-y:auto; border-radius:20px 20px 12px 12px; }
   }
+  :root[data-theme="dark"] {
+    --bg:#0d1218; --bg-card:#171e27; --bg-card-hover:#1d2732; --border:#2b3744;
+    --accent:#ff7252; --accent-strong:#ff8c72; --accent-soft:rgba(255,114,82,.14); --accent-2:#f2ad62;
+    --text:#edf2f7; --text-dim:#9eabb8; --positive:#54d68a; --negative:#ff7d7d;
+    --shadow-sm:0 1px 2px rgba(0,0,0,.18),0 5px 16px rgba(0,0,0,.16);
+    --shadow-lg:0 24px 60px rgba(0,0,0,.45); color-scheme:dark;
+  }
+  :root[data-theme="dark"] body::before { background:linear-gradient(180deg,#151c25 0%,rgba(13,18,24,0) 100%); }
+  :root[data-theme="dark"] header { background:rgba(13,18,24,.9); border-bottom-color:rgba(43,55,68,.9); }
+  :root[data-theme="dark"] .nav-link:hover,
+  :root[data-theme="dark"] .modal-close { background:#202a35; }
+  :root[data-theme="dark"] .btn,
+  :root[data-theme="dark"] #search,
+  :root[data-theme="dark"] .home-intro,
+  :root[data-theme="dark"] .section-card,
+  :root[data-theme="dark"] .kat-card,
+  :root[data-theme="dark"] .terim-card,
+  :root[data-theme="dark"] .forum-item,
+  :root[data-theme="dark"] .form-box,
+  :root[data-theme="dark"] .comment,
+  :root[data-theme="dark"] .modal { background:var(--bg-card); color:var(--text); }
+  :root[data-theme="dark"] .btn:hover,
+  :root[data-theme="dark"] .kat-card:hover,
+  :root[data-theme="dark"] .terim-card:hover,
+  :root[data-theme="dark"] .forum-item:hover { background:var(--bg-card-hover); }
+  :root[data-theme="dark"] .home-stat,
+  :root[data-theme="dark"] .rich-list li,
+  :root[data-theme="dark"] .adv-item,
+  :root[data-theme="dark"] .form-box input,
+  :root[data-theme="dark"] .form-box textarea,
+  :root[data-theme="dark"] .form-box select,
+  :root[data-theme="dark"] .modal input,
+  :root[data-theme="dark"] .modal textarea,
+  :root[data-theme="dark"] .modal select { background:#111820; border-color:var(--border); color:var(--text); }
+  :root[data-theme="dark"] .form-box input:focus,
+  :root[data-theme="dark"] .form-box textarea:focus,
+  :root[data-theme="dark"] .form-box select:focus,
+  :root[data-theme="dark"] .modal input:focus,
+  :root[data-theme="dark"] .modal textarea:focus,
+  :root[data-theme="dark"] .modal select:focus { background:#141c25; }
+  :root[data-theme="dark"] .rich-intro { color:#cbd4dd; }
+  :root[data-theme="dark"] .empty-state { background:rgba(23,30,39,.6); border-color:#354353; }
+  :root[data-theme="dark"] footer { background:rgba(13,18,24,.55); }
+  .theme-toggle { display:inline-flex; align-items:center; justify-content:center; gap:7px; min-width:42px; }
+  .theme-toggle-icon { font-size:1rem; line-height:1; }
+  @media (max-width:640px) { .theme-toggle-label { display:none; } }
   @media (prefers-reduced-motion:reduce) { *,*::before,*::after { scroll-behavior:auto!important; transition:none!important; } }
 </style>
 </head>
@@ -286,6 +338,20 @@ async function api(path, opts = {}) {
 
 function esc(s) { const d = document.createElement('div'); d.textContent = s ?? ''; return d.innerHTML; }
 
+function themeControl() {
+  const dark = document.documentElement.dataset.theme === 'dark';
+  return `<button class="btn theme-toggle" onclick="toggleTheme()" aria-label="${dark ? 'Açık moda geç' : 'Koyu moda geç'}" title="${dark ? 'Açık moda geç' : 'Koyu moda geç'}">
+    <span class="theme-toggle-icon" aria-hidden="true">${dark ? '☀' : '☾'}</span>
+    <span class="theme-toggle-label">${dark ? 'Açık' : 'Koyu'}</span>
+  </button>`;
+}
+function toggleTheme() {
+  const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+  document.documentElement.dataset.theme = next;
+  localStorage.setItem('sozluk_theme', next);
+  renderNav();
+}
+
 // Aramayı Türkçe büyük/küçük harf ve aksansız yazım farklarına dayanıklı yapar.
 // Örnek: "ISI YALITIMI", "ısı yalıtımı" ve "isi yalitimi" aynı sonucu bulabilir.
 function normalizeSearchText(value) {
@@ -334,6 +400,7 @@ function renderNav() {
       <button class="btn" onclick="showLoginModal()">Giriş Yap</button>
       <button class="btn btn-primary" onclick="showRegisterModal()">Kayıt Ol</button>
     `}
+    ${themeControl()}
   `;
 }
 
