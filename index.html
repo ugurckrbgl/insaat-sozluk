@@ -694,10 +694,10 @@ function showRegisterModal() {
         <span class="modal-close" onclick="closeModal()">✕</span>
         <h3>Kayıt Ol</h3>
         <div class="error-msg" id="regErr" style="display:none;"></div>
-        <input id="regName" type="text" placeholder="Ad Soyad">
-        <input id="regEmail" type="email" placeholder="E-posta">
-        <input id="regPass" type="password" placeholder="Şifre (en az 6 karakter)">
-        <input id="regUzmanlik" type="text" placeholder="Uzmanlık alanınız (opsiyonel, örn: Elektrik Taahhüt)">
+        <input id="regName" type="text" maxlength="100" autocomplete="name" placeholder="Ad Soyad">
+        <input id="regEmail" type="email" maxlength="254" autocomplete="email" placeholder="E-posta">
+        <input id="regPass" type="password" minlength="6" maxlength="128" autocomplete="new-password" placeholder="Şifre (en az 6 karakter)">
+        <input id="regUzmanlik" type="text" maxlength="150" placeholder="Uzmanlık alanınız (opsiyonel, örn: Elektrik Taahhüt)">
         <button class="btn btn-primary" style="width:100%;" onclick="doRegister()">Kayıt Ol</button>
         <div style="text-align:center; margin-top:12px; font-size:.85rem; color:var(--text-dim);">
           Zaten hesabın var mı? <span style="color:var(--accent-2);cursor:pointer;" onclick="showLoginModal()">Giriş yap</span>
@@ -725,6 +725,16 @@ async function doRegister() {
   const password = document.getElementById('regPass').value;
   const uzmanlik_alani = document.getElementById('regUzmanlik').value.trim();
   const errEl = document.getElementById('regErr');
+  errEl.style.display = 'none';
+  if (!display_name || !email || !password) {
+    errEl.textContent = 'Ad, e-posta ve şifre zorunludur.'; errEl.style.display = 'block'; return;
+  }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email) || email.includes('..')) {
+    errEl.textContent = 'Geçerli bir e-posta adresi girin.'; errEl.style.display = 'block'; return;
+  }
+  if (password.length < 6 || password.length > 128) {
+    errEl.textContent = 'Şifre 6–128 karakter arasında olmalıdır.'; errEl.style.display = 'block'; return;
+  }
   try {
     const data = await api('/api/auth/register', { method: 'POST', body: JSON.stringify({ display_name, email, password, uzmanlik_alani }) });
     authToken = data.token; currentUser = data.user;
