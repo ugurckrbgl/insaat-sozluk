@@ -181,9 +181,15 @@ function renderTerimlerView(area) {
 
   if (b.anaKategoriler && !treeState.anaKatKod) {
     html += `<div class="breadcrumb-tree">${crumbs.join('<span>›</span>')}</div>`;
+    html += `<div style="margin-bottom:12px;"><button class="btn btn-primary btn-sm" onclick="showAnaKategoriModal(null, ${b.id})">+ Yeni Ana Kategori</button></div>`;
     html += `<div class="tree-list">` + b.anaKategoriler.map(ak => {
       const n = ak.kategoriler.reduce((s,k)=>s+k.terimler.length,0);
-      return `<div class="tree-item" onclick="treeState.anaKatKod='${ak.kod}';renderView()"><span>${esc(ak.baslik)}</span><span style="color:var(--text-dim);font-size:.8rem;">${n} terim</span></div>`;
+      return `<div class="tree-item">
+        <span onclick="treeState.anaKatKod='${ak.kod}';renderView()" style="flex:1;">${esc(ak.kod)} — ${esc(ak.baslik)}</span>
+        <span style="color:var(--text-dim);font-size:.8rem;margin-right:10px;">${ak.kategoriler.length} kategori · ${n} terim</span>
+        <button class="btn btn-sm" onclick="showAnaKategoriModal(${ak.id}, ${b.id})">Düzenle</button>
+        <button class="btn btn-sm btn-danger" onclick="deleteAnaKategori(${ak.id}, ${ak.kategoriler.length})">Sil</button>
+      </div>`;
     }).join('') + `</div>`;
     area.innerHTML = html;
     return;
@@ -368,6 +374,62 @@ async function deleteTerim(id) {
     DATA = await api('/api/sozluk');
     renderView();
     if (result.gorsel_uyarisi) alert(result.gorsel_uyarisi);
+  } catch (e) { alert('Hata: ' + e.message); }
+}
+
+function findAnaKategoriById(id) {
+  for (const b of DATA.bolumler) {
+    const found = (b.anaKategoriler || []).find(ak => ak.id === id);
+    if (found) return found;
+  }
+  return null;
+}
+
+function showAnaKategoriModal(id, bolumId) {
+  const ak = id ? findAnaKategoriById(id) : { kod:'', baslik:'', sira:0 };
+  document.body.insertAdjacentHTML('beforeend', `
+    <div class="modal-overlay" id="anaKatModal" onclick="if(event.target===this) this.remove()">
+      <div class="modal">
+        <h3>${id ? 'Ana Kategoriyi Düzenle' : 'Yeni Ana Kategori'}</h3>
+        <label>Kod</label>
+        <input id="mAnaKatKod" value="${esc(ak.kod)}" ${id ? 'disabled' : ''} placeholder="Örn: B-A3">
+        <label>Başlık</label>
+        <input id="mAnaKatBaslik" value="${esc(ak.baslik)}">
+        <label>Sıra</label>
+        <input id="mAnaKatSira" type="number" value="${ak.sira || 0}">
+        <div style="display:flex;gap:10px;margin-top:16px;">
+          <button class="btn btn-primary" onclick="saveAnaKategori(${id || 'null'}, ${bolumId})">Kaydet</button>
+          <button class="btn" onclick="document.getElementById('anaKatModal').remove()">İptal</button>
+        </div>
+      </div>
+    </div>`);
+}
+
+async function saveAnaKategori(id, bolumId) {
+  const kod = document.getElementById('mAnaKatKod').value.trim();
+  const baslik = document.getElementById('mAnaKatBaslik').value.trim();
+  const sira = parseInt(document.getElementById('mAnaKatSira').value) || 0;
+  if (!kod || !baslik) { alert('Kod ve başlık zorunludur.'); return; }
+  try {
+    if (id) {
+      await api(`/api/admin/ana-kategoriler/${id}`, { method:'PUT', body:JSON.stringify({ baslik, sira }) });
+    } else {
+      await api('/api/admin/ana-kategoriler', { method:'POST', body:JSON.stringify({ bolum_id:bolumId, kod, baslik, sira }) });
+    }
+    document.getElementById('anaKatModal').remove();
+    DATA = await api('/api/sozluk');
+    renderView();
+  } catch (e) { alert('Hata: ' + e.message); }
+}
+
+async function deleteAnaKategori(id, kategoriSayisi) {
+  if (kategoriSayisi > 0) { alert('Bu ana kategorinin altında kategoriler var. Önce onları kaldırın.'); return; }
+  if (!confirm('Bu ana kategoriyi silmek istediğinize emin misiniz?')) return;
+  try {
+    await api(`/api/admin/ana-kategoriler/${id}`, { method:'DELETE' });
+    DATA = await api('/api/sozluk');
+    treeState.anaKatKod = null;
+    renderView();
   } catch (e) { alert('Hata: ' + e.message); }
 }
 
