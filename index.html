@@ -156,8 +156,8 @@
   .search-icon { left:40px; color:#7b8692; }
   main { max-width:1180px; padding:30px 24px 72px; }
   .breadcrumb { min-height:22px; margin-bottom:22px; font-size:.82rem; font-weight:600; }
-  .breadcrumb span.crumb { color:var(--text-dim); }
-  .breadcrumb span.crumb:hover { color:var(--accent); text-decoration:none; }
+  .breadcrumb span.crumb { display:inline-flex; align-items:center; min-height:32px; padding:4px 3px; margin:-4px -3px; border-radius:7px; color:var(--text-dim); }
+  .breadcrumb span.crumb:hover { color:var(--accent); background:var(--accent-soft); text-decoration:none; }
   .breadcrumb .sep { color:#aeb6bf; }
   .home-intro { display:grid; grid-template-columns:minmax(0,1.35fr) minmax(280px,.65fr); gap:28px; align-items:end; margin:4px 0 28px; padding:30px; border:1px solid var(--border); border-radius:24px; background:#fff; box-shadow:var(--shadow-sm); overflow:hidden; position:relative; }
   .home-intro::after { content:""; position:absolute; width:260px; height:260px; right:-100px; top:-130px; border:46px solid var(--accent-soft); border-radius:50%; pointer-events:none; }
@@ -494,6 +494,7 @@ function renderHome() {
 function renderBolum() {
   const b = findBolum(state.bolumKod);
   setBreadcrumb([{ label: 'Ana Sayfa', action: goHome }, { label: b.baslik.replace(/^[AB]\)\s*/, '') }]);
+  const backLink = `<div class="back-link" onclick="goHome()">← Ana sayfaya dön</div>`;
   if (b.anaKategoriler) {
     const cards = b.anaKategoriler.map(ak => `
       <div class="kat-card" onclick="goAnaKat('${b.kod}','${ak.kod}')">
@@ -501,7 +502,7 @@ function renderBolum() {
         <h3>${esc(ak.baslik)}</h3>
         <div class="n">${ak.kategoriler.reduce((s,k)=>s+k.terimler.length,0)} terim</div>
       </div>`).join('');
-    contentEl.innerHTML = `<div class="kat-grid">${cards}</div>`;
+    contentEl.innerHTML = `${backLink}<div class="kat-grid">${cards}</div>`;
   } else {
     const cards = b.kategoriler.map(k => `
       <div class="kat-card" onclick="goKat('${b.kod}','${k.kod}')">
@@ -509,7 +510,7 @@ function renderBolum() {
         <h3>${esc(k.baslik)}</h3>
         <div class="n">${k.terimler.length} terim</div>
       </div>`).join('');
-    contentEl.innerHTML = `<div class="kat-grid">${cards}</div>`;
+    contentEl.innerHTML = `${backLink}<div class="kat-grid">${cards}</div>`;
   }
 }
 
@@ -523,7 +524,7 @@ function renderAnaKategori() {
       <h3>${esc(k.baslik)}</h3>
       <div class="n">${k.terimler.length} terim</div>
     </div>`).join('');
-  contentEl.innerHTML = `<div class="kat-grid">${cards}</div>`;
+  contentEl.innerHTML = `<div class="back-link" onclick="goBolum('${b.kod}')">← Geri dön</div><div class="kat-grid">${cards}</div>`;
 }
 
 function renderKategori() {
@@ -536,12 +537,13 @@ function renderKategori() {
   }
   crumbs.push({ label: k.baslik });
   setBreadcrumb(crumbs);
+  const geriAction = state.anaKatKod ? `goAnaKat('${b.kod}','${state.anaKatKod}')` : `goBolum('${b.kod}')`;
   const cards = k.terimler.map(t => `
     <div class="terim-card" onclick="goTerim(${t.id})">
       <h4>${esc(t.terim)}</h4>
       <p>${esc(t.anlam)}</p>
     </div>`).join('');
-  contentEl.innerHTML = `<div class="terim-grid">${cards}</div>`;
+  contentEl.innerHTML = `<div class="back-link" onclick="${geriAction}">← Geri dön</div><div class="terim-grid">${cards}</div>`;
 }
 
 function renderTerim() {
