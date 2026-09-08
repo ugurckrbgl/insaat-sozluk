@@ -164,6 +164,7 @@ function renderTerimlerView(area) {
   const crumbs = [`<span onclick="treeState={bolumKod:null,anaKatKod:null,katKod:null};renderView()">Bölümler</span>`];
 
   if (!treeState.bolumKod) {
+    html += `<div style="margin-bottom:12px;"><button class="btn btn-primary btn-sm" onclick="showBolumEkleModal()">+ Yeni Bölüm</button></div>`;
     html += `<div class="tree-list">` + DATA.bolumler.map(b => {
       const kats = getAllKats(b);
       const n = kats.reduce((s,k)=>s+k.terimler.length,0);
@@ -197,9 +198,10 @@ function renderTerimlerView(area) {
     html += `<div class="breadcrumb-tree">${crumbs.join('<span>›</span>')}</div>`;
     html += `<div style="margin-bottom:12px;"><button class="btn btn-primary btn-sm" onclick="showKategoriEkleModal('${b.kod}','${treeState.anaKatKod||''}')">+ Yeni Kategori</button></div>`;
     html += `<div class="tree-list">` + kats.map(k => `
-      <div class="tree-item" onclick="treeState.katKod='${k.kod}';renderView()">
-        <span>${esc(k.kod)} — ${esc(k.baslik)}</span>
-        <span style="color:var(--text-dim);font-size:.8rem;">${k.terimler.length} terim</span>
+      <div class="tree-item">
+        <span onclick="treeState.katKod='${k.kod}';renderView()" style="flex:1;">${esc(k.kod)} — ${esc(k.baslik)}</span>
+        <span style="color:var(--text-dim);font-size:.8rem;margin-right:10px;">${k.terimler.length} terim</span>
+        <button class="btn btn-sm btn-danger" onclick="event.stopPropagation();deleteKategori(${k.id}, ${k.terimler.length})">Sil</button>
       </div>`).join('') + `</div>`;
     area.innerHTML = html;
     return;
@@ -235,6 +237,14 @@ function findTerimById(id) {
   return null;
 }
 
+function findBolumKoduByKategoriId(kategoriId) {
+  for (const b of DATA.bolumler) {
+    const kats = getAllKats(b);
+    if (kats.some(k => k.id === kategoriId)) return b.kod;
+  }
+  return 'A';
+}
+
 function showTerimEditModal(terimId, kategoriId) {
   const t = terimId ? findTerimById(terimId) : { terim:'', anlam:'', gorsel:'', detay:{} };
   const d = t.detay || {};
@@ -246,6 +256,8 @@ function showTerimEditModal(terimId, kategoriId) {
         <input id="mTerim" value="${esc(t.terim)}">
         <label>Kısa Anlam</label>
         <input id="mAnlam" value="${esc(t.anlam)}">
+        <label>Sıra <span class="yardim-metni">(listede önce/sonra görünmesini belirler, küçük sayı önce gelir)</span></label>
+        <input id="mSira" type="number" value="${t.sira || 0}">
         <label>Görsel</label>
         <div id="mGorselPreview">${t.gorsel ? `<img class="img-thumb" style="width:120px;height:68px;" src="${API}/${t.gorsel}">` : '<span style="color:var(--text-dim);">Görsel yok</span>'}</div>
         <div class="img-upload-zone" onclick="document.getElementById('mGorselInput').click()">📷 Görsel yüklemek için tıklayın (webp/jpg/png)</div>
@@ -301,7 +313,7 @@ function linesToList(text) {
 async function handleGorselUpload(input, kategoriId) {
   const file = input.files[0];
   if (!file) return;
-  const bolum = treeState.bolumKod || 'A';
+  const bolum = findBolumKoduByKategoriId(parseInt(kategoriId));
   const formData = new FormData();
   formData.append('file', file);
   formData.append('bolum', bolum);
@@ -321,6 +333,7 @@ async function saveTerim(terimId, kategoriId) {
     terim: document.getElementById('mTerim').value.trim(),
     anlam: document.getElementById('mAnlam').value.trim(),
     gorsel_url: document.getElementById('mGorselUrl').value.trim(),
+    sira: parseInt(document.getElementById('mSira').value) || 0,
     detay: {
       giris: document.getElementById('mGiris').value.trim(),
       video_url: document.getElementById('mVideoUrl').value.trim(),
@@ -363,6 +376,8 @@ function showKategoriEkleModal(bolumKod, anaKatKod) {
         <input id="mKatKod">
         <label>Başlık</label>
         <input id="mKatBaslik">
+        <label>Sıra <span class="yardim-metni">(listede önce/sonra görünmesini belirler, küçük sayı önce gelir)</span></label>
+        <input id="mKatSira" type="number" value="0">
         <div style="display:flex; gap:10px; margin-top:16px;">
           <button class="btn btn-primary" onclick="saveKategori(${b.id}, ${anaKatKod ? "'"+anaKatKod+"'" : 'null'})">Kaydet</button>
           <button class="btn" onclick="document.getElementById('katModal').remove()">İptal</button>
@@ -371,9 +386,52 @@ function showKategoriEkleModal(bolumKod, anaKatKod) {
     </div>`);
 }
 
+function showBolumEkleModal() {
+  document.body.insertAdjacentHTML('beforeend', `
+    <div class="modal-overlay" id="bolumModal" onclick="if(event.target===this) this.remove()">
+      <div class="modal">
+        <h3>Yeni Bölüm</h3>
+        <label>Kod (örn: C, D)</label>
+        <input id="mBolumKod">
+        <label>Başlık</label>
+        <input id="mBolumBaslik">
+        <label>Sıra</label>
+        <input id="mBolumSira" type="number" value="0">
+        <div style="display:flex; gap:10px; margin-top:16px;">
+          <button class="btn btn-primary" onclick="saveBolum()">Kaydet</button>
+          <button class="btn" onclick="document.getElementById('bolumModal').remove()">İptal</button>
+        </div>
+      </div>
+    </div>`);
+}
+
+async function saveBolum() {
+  const kod = document.getElementById('mBolumKod').value.trim();
+  const baslik = document.getElementById('mBolumBaslik').value.trim();
+  const sira = parseInt(document.getElementById('mBolumSira').value) || 0;
+  if (!kod || !baslik) { alert('Kod ve başlık zorunludur.'); return; }
+  try {
+    await api('/api/admin/bolumler', { method: 'POST', body: JSON.stringify({ kod, baslik, sira }) });
+    document.getElementById('bolumModal').remove();
+    DATA = await api('/api/sozluk');
+    renderView();
+  } catch (e) { alert('Hata: ' + e.message); }
+}
+
+async function deleteKategori(id, terimSayisi) {
+  if (terimSayisi > 0) { alert('Bu kategoride ' + terimSayisi + ' terim var. Önce terimleri silin veya başka kategoriye taşıyın.'); return; }
+  if (!confirm('Bu kategoriyi silmek istediğinize emin misiniz?')) return;
+  try {
+    await api(`/api/admin/kategoriler/${id}`, { method: 'DELETE' });
+    DATA = await api('/api/sozluk');
+    renderView();
+  } catch (e) { alert('Hata: ' + e.message); }
+}
+
 async function saveKategori(bolumId, anaKatKod) {
   const kod = document.getElementById('mKatKod').value.trim();
   const baslik = document.getElementById('mKatBaslik').value.trim();
+  const sira = parseInt(document.getElementById('mKatSira').value) || 0;
   if (!kod || !baslik) { alert('Kod ve başlık zorunludur.'); return; }
   let ana_kategori_id = null;
   if (anaKatKod) {
@@ -382,7 +440,7 @@ async function saveKategori(bolumId, anaKatKod) {
     ana_kategori_id = ak.id;
   }
   try {
-    await api('/api/admin/kategoriler', { method: 'POST', body: JSON.stringify({ bolum_id: bolumId, ana_kategori_id, kod, baslik }) });
+    await api('/api/admin/kategoriler', { method: 'POST', body: JSON.stringify({ bolum_id: bolumId, ana_kategori_id, kod, baslik, sira }) });
     document.getElementById('katModal').remove();
     DATA = await api('/api/sozluk');
     renderView();
