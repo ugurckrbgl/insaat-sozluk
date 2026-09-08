@@ -83,6 +83,89 @@
     .modal { width:95%; padding:20px 16px; max-height:94vh; }
     .login-box { width:calc(100% - 24px); padding:24px 18px; }
   }
+
+  /* 2026 modern yönetim arayüzü */
+  :root {
+    --bg:#f4f6f8; --bg-card:#ffffff; --bg-card-hover:#f8fafb; --border:#e1e6eb;
+    --accent:#e14b2b; --accent-strong:#ba341b; --accent-2:#a85d16; --text:#18212b;
+    --text-dim:#697481; --positive:#16834a; --negative:#c64040;
+    --sidebar:#17202a; --sidebar-hover:#222d38; --shadow:0 1px 2px rgba(16,24,40,.04),0 5px 16px rgba(16,24,40,.045);
+    color-scheme:light;
+  }
+  html { scroll-behavior:smooth; }
+  body { font-family:Inter,"Segoe UI",Roboto,Arial,sans-serif; line-height:1.45; background:var(--bg); }
+  button,input,textarea,select { font:inherit; }
+  .layout { align-items:stretch; }
+  .sidebar { width:248px; min-height:100vh; padding:18px 12px; position:sticky; top:0; height:100vh; background:var(--sidebar); border:0; color:#fff; box-shadow:6px 0 24px rgba(16,24,40,.08); }
+  .sidebar h1 { display:flex; align-items:center; gap:10px; margin:0 5px 22px; padding:5px 7px 20px; border-bottom:1px solid rgba(255,255,255,.1); font-size:.94rem; letter-spacing:-.01em; }
+  .sidebar h1::before { content:"İS"; display:grid; place-items:center; width:34px; height:34px; flex:0 0 34px; border-radius:10px; background:var(--accent); color:#fff; font-size:.72rem; box-shadow:0 6px 14px rgba(225,75,43,.25); }
+  .sidebar .menu-item { margin:3px 0; padding:11px 12px; border-radius:10px; color:#aeb8c3; font-size:.84rem; font-weight:620; transition:background .15s,color .15s,transform .15s; }
+  .sidebar .menu-item:hover { background:var(--sidebar-hover); color:#fff; transform:translateX(2px); }
+  .sidebar .menu-item.active { color:#fff; border:0; background:rgba(225,75,43,.17); box-shadow:inset 3px 0 0 var(--accent); }
+  .content-area { width:calc(100% - 248px); max-width:1500px; padding:34px 38px 60px; }
+  .page-title { min-height:42px; margin:0 0 22px; font-size:1.45rem; font-weight:760; letter-spacing:-.035em; }
+  .btn { min-height:36px; padding:8px 13px; border-radius:9px; background:#fff; border-color:#dbe1e6; color:var(--text); font-weight:650; box-shadow:0 1px 1px rgba(16,24,40,.03); transition:.15s ease; }
+  .btn:hover { background:#f8fafb; box-shadow:0 4px 10px rgba(16,24,40,.07); transform:translateY(-1px); }
+  .btn:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible,[onclick]:focus-visible { outline:3px solid rgba(225,75,43,.18); outline-offset:2px; }
+  .btn-primary { background:var(--accent); border-color:var(--accent); color:#fff; box-shadow:0 5px 12px rgba(225,75,43,.16); }
+  .btn-primary:hover { background:var(--accent-strong); border-color:var(--accent-strong); }
+  .btn-danger { background:#fff; border-color:#efc7c7; color:var(--negative); }
+  .btn-danger:hover { background:#fff4f4; }
+  .btn-sm { min-height:31px; padding:6px 10px; font-size:.75rem; }
+  table { border:1px solid var(--border); border-radius:14px; border-collapse:separate; border-spacing:0; box-shadow:var(--shadow); }
+  th,td { padding:13px 15px; border-bottom-color:#e8ecef; }
+  th { height:44px; background:#f8fafb; color:#75808c; font-size:.7rem; letter-spacing:.055em; }
+  thead th:first-child { border-radius:13px 0 0 0; }
+  thead th:last-child { border-radius:0 13px 0 0; }
+  tbody tr:last-child td { border-bottom:0; }
+  tr:hover { background:#fffaf8; }
+  td:last-child { white-space:nowrap; }
+  .form-box { border-radius:16px; padding:22px; box-shadow:var(--shadow); }
+  .form-box input,.form-box textarea,.form-box select,.modal input,.modal textarea,.modal select { padding:11px 13px; border-radius:10px; background:#f8fafb; border-color:#dce2e7; transition:.15s; }
+  .form-box input:focus,.form-box textarea:focus,.form-box select:focus,.modal input:focus,.modal textarea:focus,.modal select:focus { outline:3px solid rgba(225,75,43,.1); border-color:var(--accent); background:#fff; }
+  .login-screen { min-height:100vh; height:auto; padding:24px; background:radial-gradient(circle at 50% 15%,#fff 0,#f4f6f8 48%,#e9edf1 100%); }
+  .login-box { width:390px; padding:34px; border:0; border-radius:20px; box-shadow:0 24px 70px rgba(16,24,40,.13); }
+  .login-box h2 { font-size:1.35rem; letter-spacing:-.03em; }
+  .badge { padding:4px 9px; font-weight:700; }
+  .badge-admin { background:#fff0eb; color:var(--accent-strong); }
+  .badge-user { background:#eef1f4; color:#596572; }
+  .badge-pending { background:#fff7e8; color:#916018; }
+  .badge-active { background:#eaf8f0; color:#15713f; }
+  .badge-suspended { background:#fff0f0; color:#ab3434; }
+  .img-thumb { width:66px; height:40px; border-radius:8px; }
+  .img-upload-zone { margin-top:8px; padding:28px 20px; border-color:#cfd6dd; border-radius:13px; background:#fafbfc; transition:.15s; }
+  .img-upload-zone:hover { border-color:var(--accent); background:#fff7f4; }
+  .breadcrumb-tree { margin-bottom:20px; padding:10px 13px; border:1px solid var(--border); border-radius:11px; background:rgba(255,255,255,.68); }
+  .breadcrumb-tree span { color:var(--accent-strong); font-weight:650; }
+  .tree-list { gap:9px; }
+  .tree-item { min-height:54px; padding:11px 14px; border-radius:12px; box-shadow:0 1px 2px rgba(16,24,40,.025); transition:.15s; }
+  .tree-item:hover { background:#fff; border-color:#edaa9b; box-shadow:0 7px 17px rgba(16,24,40,.06); transform:translateY(-1px); }
+  .empty-note { margin:12px 0; border:1px dashed #ccd4dc; border-radius:14px; background:rgba(255,255,255,.55); }
+  .modal-overlay { padding:24px; background:rgba(23,32,42,.58); backdrop-filter:blur(6px); }
+  .modal { border:0; border-radius:20px; padding:30px; box-shadow:0 24px 70px rgba(16,24,40,.22); }
+  .modal h3 { margin-top:0; font-size:1.2rem; letter-spacing:-.025em; }
+  .modal label { color:#56616d; }
+  @media (max-width:900px) {
+    .layout { display:block; }
+    .sidebar { width:100%; height:auto; min-height:auto; padding:8px 10px; border-bottom:0; background:rgba(23,32,42,.97); backdrop-filter:blur(16px); }
+    .sidebar h1 { margin:0 6px 0 0; padding:2px 10px 2px 2px; border:0; font-size:0; }
+    .sidebar h1::before { width:32px; height:32px; flex-basis:32px; }
+    .sidebar .menu-item { padding:9px 11px; color:#bdc5ce; }
+    .sidebar .menu-item.active { border:0; box-shadow:inset 0 -2px 0 var(--accent); }
+    .content-area { width:100%; padding:24px 16px 50px; }
+    table { min-width:720px; }
+    .page-title { font-size:1.25rem; }
+    .modal-overlay { padding:12px; }
+  }
+  @media (max-width:520px) {
+    .content-area { padding:20px 12px 44px; }
+    .tree-item { align-items:flex-start; }
+    .tree-item .btn { flex:1; }
+    .modal-overlay { align-items:flex-end; padding:8px; }
+    .modal { width:100%; max-height:94vh; padding:22px 16px; border-radius:20px 20px 12px 12px; }
+    .login-box { width:100%; padding:28px 20px; }
+  }
+  @media (prefers-reduced-motion:reduce) { *,*::before,*::after { transition:none!important; scroll-behavior:auto!important; } }
 </style>
 </head>
 <body>
@@ -128,7 +211,7 @@ async function boot() {
 function renderLogin(errMsg) {
   document.getElementById('app').innerHTML = `
     <div class="login-screen"><div class="login-box">
-      <h2 style="margin-top:0;">🔐 Yönetim Paneli</h2>
+      <h2 style="margin-top:0;">Yönetim Paneli</h2>
       ${errMsg ? `<div class="error-msg">${esc(errMsg)}</div>` : ''}
       <input id="loginEmail" type="email" placeholder="E-posta" style="width:100%;padding:10px;margin-bottom:10px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);">
       <input id="loginPass" type="password" placeholder="Şifre" style="width:100%;padding:10px;margin-bottom:14px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);">
@@ -157,7 +240,7 @@ function renderApp() {
   document.getElementById('app').innerHTML = `
     <div class="layout">
       <div class="sidebar">
-        <h1>🏗️ Yönetim Paneli</h1>
+        <h1>Yönetim Paneli</h1>
         <div class="menu-item ${adminView==='terimler'?'active':''}" onclick="setView('terimler')">📖 Sözlük İçeriği</div>
         <div class="menu-item ${adminView==='forum'?'active':''}" onclick="setView('forum')">💬 Forum Moderasyon</div>
         <div class="menu-item ${adminView==='kullanicilar'?'active':''}" onclick="setView('kullanicilar')">👥 Kullanıcılar</div>
