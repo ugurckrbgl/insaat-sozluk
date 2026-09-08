@@ -405,10 +405,12 @@ function renderNav() {
   `;
 }
 
+let breadcrumbActions = [];
 function setBreadcrumb(crumbs) {
+  breadcrumbActions = crumbs.map(c => c.action || null);
   breadcrumbEl.innerHTML = crumbs.map((c, i) => {
     const sep = i > 0 ? '<span class="sep">›</span>' : '';
-    if (c.action) return `${sep}<span class="crumb" onclick="(${c.action.toString()})()">${esc(c.label)}</span>`;
+    if (c.action) return `${sep}<span class="crumb" onclick="breadcrumbActions[${i}]()">${esc(c.label)}</span>`;
     return `${sep}<span>${esc(c.label)}</span>`;
   }).join('');
 }
