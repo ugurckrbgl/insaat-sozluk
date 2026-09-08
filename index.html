@@ -149,6 +149,40 @@ async function api(path, opts = {}) {
 
 function esc(s) { const d = document.createElement('div'); d.textContent = s ?? ''; return d.innerHTML; }
 
+// Aramayı Türkçe büyük/küçük harf ve aksansız yazım farklarına dayanıklı yapar.
+// Örnek: "ISI YALITIMI", "ısı yalıtımı" ve "isi yalitimi" aynı sonucu bulabilir.
+function normalizeSearchText(value) {
+  return String(value ?? '')
+    .toLocaleLowerCase('tr-TR')
+    .replace(/[çÇ]/g, 'c')
+    .replace(/[ğĞ]/g, 'g')
+    .replace(/[ıİ]/g, 'i')
+    .replace(/[öÖ]/g, 'o')
+    .replace(/[şŞ]/g, 's')
+    .replace(/[üÜ]/g, 'u')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function terimSearchText(t) {
+  const d = t.detay || {};
+  const listText = (items) => (items || [])
+    .flatMap(item => [item?.baslik, item?.aciklama])
+    .filter(Boolean);
+  return normalizeSearchText([
+    t.terim,
+    t.anlam,
+    d.giris,
+    d.video_baslik,
+    ...listText(d.ozellikler),
+    ...listText(d.kullanim),
+    ...listText(d.avantajlar),
+    ...listText(d.dezavantajlar),
+  ].filter(Boolean).join(' '));
+}
+
 function renderNav() {
   navBar.innerHTML = `
     <button class="nav-link ${state.view==='home'||state.view==='bolum'||state.view==='kategori'||state.view==='terim'?'active':''}" onclick="goHome()">Sözlük</button>
@@ -343,12 +377,14 @@ function renderTerim() {
 // ---------------- ARAMA ----------------
 function renderSearch() {
   setBreadcrumb([{ label: 'Ana Sayfa', action: goHome }, { label: `"${state.query}" için sonuçlar` }]);
+  const normalizedQuery = normalizeSearchText(state.query);
   const results = [];
   for (const b of DATA.bolumler) {
     const kats = b.kategoriler || (b.anaKategoriler || []).flatMap(ak => ak.kategoriler);
     for (const k of kats) {
       for (const t of k.terimler) {
-        if (t.terim.toLowerCase().includes(state.query) || (t.anlam||'').toLowerCase().includes(state.query)) {
+        const searchText = `${terimSearchText(t)} ${normalizeSearchText(k.kod)} ${normalizeSearchText(k.baslik)}`;
+        if (searchText.includes(normalizedQuery)) {
           results.push({ t, k, b });
         }
       }
@@ -365,7 +401,7 @@ function renderSearch() {
 }
 
 document.getElementById('search').addEventListener('input', (e) => {
-  state.query = e.target.value.trim().toLowerCase();
+  state.query = e.target.value.trim();
   render();
 });
 
