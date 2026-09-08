@@ -18,6 +18,7 @@
   .page-title { font-size:1.4rem; margin:0 0 20px; display:flex; justify-content:space-between; align-items:center; }
   .btn { border:1px solid var(--border); border-radius:8px; background:var(--bg-card); color:var(--text); padding:8px 16px; cursor:pointer; font:inherit; font-size:.88rem; }
   .btn:hover { background:var(--bg-card-hover); }
+  .btn:disabled { opacity:.45; cursor:not-allowed; }
   .btn-primary { background:var(--accent); color:#fff; border-color:var(--accent); }
   .btn-danger { background:var(--negative); color:#fff; border-color:var(--negative); }
   .btn-sm { padding:4px 10px; font-size:.78rem; }
@@ -71,6 +72,7 @@ let authToken = localStorage.getItem('sozluk_token') || null;
 let currentUser = JSON.parse(localStorage.getItem('sozluk_user') || 'null');
 let DATA = null;
 let adminView = 'terimler';
+let usersPage = 1;
 let treeState = { bolumKod: null, anaKatKod: null, katKod: null };
 
 async function api(path, opts = {}) {
@@ -146,7 +148,7 @@ function renderApp() {
   renderView();
 }
 
-function setView(v) { adminView = v; treeState = { bolumKod: null, anaKatKod: null, katKod: null }; renderView(); }
+function setView(v) { adminView = v; if (v === 'kullanicilar') usersPage = 1; treeState = { bolumKod: null, anaKatKod: null, katKod: null }; renderView(); }
 
 async function renderView() {
   const area = document.getElementById('contentArea');
@@ -545,8 +547,9 @@ async function doSifreDegistir() {
 async function renderKullanicilarView(area) {
   area.innerHTML = `<div class="page-title">Kullanıcılar</div><div class="empty-note">Yükleniyor...</div>`;
   try {
-    const data = await api('/api/admin/kullanicilar');
-    let html = `<div class="page-title">Kullanıcılar (${data.kullanicilar.length})</div>`;
+    const data = await api(`/api/admin/kullanicilar?page=${usersPage}`);
+    usersPage = data.page;
+    let html = `<div class="page-title">Kullanıcılar (${data.total})</div>`;
     html += `<table><thead><tr><th>Ad</th><th>E-posta</th><th>Uzmanlık</th><th>Rol</th><th>Durum</th><th></th></tr></thead><tbody>`;
     html += data.kullanicilar.map(u => `
       <tr>
@@ -565,10 +568,23 @@ async function renderKullanicilarView(area) {
         </td>
       </tr>`).join('');
     html += `</tbody></table>`;
+    html += `<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:16px;flex-wrap:wrap;">
+      <span style="color:var(--text-dim);font-size:.85rem;">Sayfa ${data.page} / ${data.total_pages} · Bu sayfada ${data.kullanicilar.length} kullanıcı</span>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-sm" onclick="changeUsersPage(${data.page - 1})" ${data.page <= 1 ? 'disabled' : ''}>← Önceki</button>
+        <button class="btn btn-sm" onclick="changeUsersPage(${data.page + 1})" ${data.page >= data.total_pages ? 'disabled' : ''}>Sonraki →</button>
+      </div>
+    </div>`;
     area.innerHTML = html;
   } catch (e) {
     area.innerHTML = `<div class="empty-note">Hata: ${esc(e.message)}</div>`;
   }
+}
+
+function changeUsersPage(page) {
+  if (page < 1 || page === usersPage) return;
+  usersPage = page;
+  renderView();
 }
 
 async function setRole(id, role) {
