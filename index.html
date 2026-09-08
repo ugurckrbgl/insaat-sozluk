@@ -305,6 +305,10 @@
   #navBar .btn { width:100%; justify-content:flex-start; text-align:left; }
   #navBar .theme-toggle { justify-content:flex-start; }
   #navBar > span { display:block; padding:10px 12px; }
+  @media (max-width:900px) {
+    .menu-toggle { display:flex; }
+    .top-bar nav#navBarDesktop { display:none; }
+  }
   @media (min-width:901px) {
     .menu-toggle { display:none; }
     .menu-overlay { display:none !important; }
